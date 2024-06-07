@@ -1,4 +1,4 @@
-package socket
+package sockets
 
 import (
 	"errors"
@@ -17,8 +17,10 @@ var protocolEthernetType = map[string]uint16{
 	"arp":  syscall.ETH_P_ARP,
 	"ip":   syscall.ETH_P_IP,
 	"ipv6": syscall.ETH_P_IPV6,
-	"udp":  syscall.ETH_P_IP, // UDP is part of IP, needs special handling if filtered specifically
+	"udp":  syscall.ETH_P_IP, // UDP and TCP are part of IP, need special handling if filtered specifically
 	"udp6": syscall.ETH_P_IPV6,
+	"tcp":  syscall.ETH_P_IP,
+	"tcp6": syscall.ETH_P_IPV6,
 }
 
 var errUnsupportedProtocol = errors.New("unsupported protocol")

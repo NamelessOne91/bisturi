@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/NamelessOne91/bisturi/socket"
+	"github.com/NamelessOne91/bisturi/sockets"
 )
 
 var iface = flag.String("i", "eth0", "The network interface to listen to")
@@ -21,7 +21,7 @@ func main() {
 	}
 
 	// SYS_SOCKET syscall
-	rs, err := socket.NewRawSocket(*protocol)
+	rs, err := sockets.NewRawSocket(*protocol)
 	if err != nil {
 		log.Fatalf("Failed to open raw socket: %v", err)
 	}
