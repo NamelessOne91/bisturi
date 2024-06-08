@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/NamelessOne91/bisturi/packets"
 )
 
 const mask = 0xff00
@@ -92,10 +94,26 @@ func (rs *RawSocket) ReadPackets() {
 	for {
 		n, _, err := syscall.Recvfrom(rs.fd, buf, 0)
 		if err != nil {
-			log.Println("Error reading packet:", err)
+			log.Println("Error reading from socket:", err)
 			continue
 		}
-		log.Printf("Received %d bytes of data\n", n)
+
+		switch rs.ethType {
+		case syscall.ETH_P_IP:
+			packet, err := packets.IPv4PacketFromBytes(buf[:n])
+			if err != nil {
+				log.Println("Error reading IPv4 packet:", err)
+				continue
+			}
+			log.Println(packet.Info())
+		case syscall.ETH_P_IPV6:
+			packet, err := packets.Ipv6PacketFromBytes(buf[:n])
+			if err != nil {
+				log.Println("Error reading IPv6 packet:", err)
+				continue
+			}
+			log.Println(packet.Info())
+		}
 	}
 }
 
