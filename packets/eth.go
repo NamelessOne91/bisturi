@@ -23,8 +23,10 @@ type EthernetFrame struct {
 
 var errInvalidETHFrame = errors.New("ethernet frame header must be 14 bytes")
 
+// EthFrameFromBytes parses an array of bytes to the corresponding ETH frame and returns a pointer to it.
+// Returns an error if the number of bytes is less than 14
 func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
-	if len(raw) != 14 {
+	if len(raw) < 14 {
 		return nil, errInvalidETHFrame
 	}
 
