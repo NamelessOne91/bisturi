@@ -13,7 +13,7 @@ import (
 
 const mask = 0xff00
 
-// map of protocol names to Ethernet protocol types
+// maps the protocol names to Ethernet protocol types values
 var protocolEthernetType = map[string]uint16{
 	"all":  syscall.ETH_P_ALL,
 	"arp":  syscall.ETH_P_ARP,
@@ -34,7 +34,7 @@ func hostToNetworkShort(i uint16) uint16 {
 }
 
 // RawSocket represents a raw socket and stores info about its file descriptor,
-// Ethernet protocl type and Link Layer
+// Ethernet protocl type and Link Layer info
 type RawSocket struct {
 	shutdownChan chan os.Signal
 	fd           int
@@ -87,7 +87,7 @@ func (rs *RawSocket) Bind(iface net.Interface) error {
 	return syscall.Bind(rs.fd, &rs.sll)
 }
 
-// ReadPackets calls SYS_RECVFROM to read packets traversing the binded network interface
+// ReadPackets calls SYS_RECVFROM to read packets traversing the binded network interface an display info about them.
 func (rs *RawSocket) ReadPackets() {
 	// read incoming packets
 	buf := make([]byte, 4096)

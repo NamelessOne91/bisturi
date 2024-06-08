@@ -7,6 +7,7 @@ import (
 	"net"
 )
 
+// maps the ETH frame values to the corresponding string representation
 var etherTypesValues = map[uint16]string{
 	0x0800: "IPv4",
 	0x0806: "ARP",
@@ -15,6 +16,7 @@ var etherTypesValues = map[uint16]string{
 	0x8808: "Ethernet flow control",
 }
 
+// EthernetFrame contains Layer 2 data
 type EthernetFrame struct {
 	destinationMAC net.HardwareAddr
 	sourceMAC      net.HardwareAddr
@@ -37,7 +39,8 @@ func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
 	}, nil
 }
 
-func (f *EthernetFrame) info() string {
+// Info returns an human-readable string containing the ETH frame data
+func (f *EthernetFrame) Info() string {
 	etv := etherTypesValues[f.etherType]
 
 	return fmt.Sprintf(`Ethernet Frame

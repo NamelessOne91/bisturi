@@ -7,6 +7,7 @@ import (
 	"net"
 )
 
+// maps the IP header values to the corresponding transport layer protocol
 var protocolValues = map[uint8]string{
 	1:  "ICMP",
 	6:  "TCP",
@@ -16,17 +17,19 @@ var protocolValues = map[uint8]string{
 	89: "OSPF",
 }
 
+// IPv4Packet contains the IP packet data (headers and payload)
 type IPv4Packet struct {
 	ethFrame EthernetFrame
-	ipHeader IPv4Header
+	ipHeader ipv4Header
 }
 
+// IPv6Packet contains the IP packet data (headers and payload)
 type IPv6Packet struct {
 	ethFrame EthernetFrame
-	ipHeader IPv6Header
+	ipHeader ipv6Header
 }
 
-type IPv4Header struct {
+type ipv4Header struct {
 	version        uint8
 	ihl            uint8
 	dscp           uint8
@@ -43,7 +46,7 @@ type IPv4Header struct {
 	options        []byte
 }
 
-type IPv6Header struct {
+type ipv6Header struct {
 	version       uint8
 	trafficClass  uint8
 	flowLabel     uint32
@@ -58,6 +61,8 @@ var errIPv4HeaderTooShort = errors.New("IPv4 header must be at least 20 bytes")
 var errIPv4HeaderLenLessThanIHL = errors.New("IPv4 header length less than indicated IHL")
 var errInvalidIPv6Header = errors.New("IPv6 header must be 40 bytes")
 
+// IPv4PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
+// Returns an error if the IP header bytes are less then 20 or the specified IHL
 func IPv4PacketFromBytes(raw []byte) (*IPv4Packet, error) {
 	frame, err := EthFrameFromBytes(raw[:14])
 	if err != nil {
@@ -81,6 +86,7 @@ func IPv4PacketFromBytes(raw []byte) (*IPv4Packet, error) {
 	}, nil
 }
 
+// Info returns an human-readable string containing the IPv6 packet data
 func (p *IPv4Packet) Info() string {
 	pv := protocolValues[p.ipHeader.protocol]
 	return fmt.Sprintf(`
@@ -105,15 +111,17 @@ Source IP: %s
 Destination IP: %s
 Options: %v
 `,
-		p.ethFrame.info(),
+		p.ethFrame.Info(),
 		p.ipHeader.version, p.ipHeader.ihl*4, p.ipHeader.dscp, p.ipHeader.ecn, p.ipHeader.totalLength, p.ipHeader.identification,
 		p.ipHeader.flags, p.ipHeader.fragmentOffset, p.ipHeader.ttl, p.ipHeader.protocol, pv, p.ipHeader.headerChecksum,
 		p.ipHeader.sourceIP, p.ipHeader.destinationIP, p.ipHeader.options,
 	)
 }
 
-func ipv4HeaderfromBytes(raw []byte) IPv4Header {
-	h := IPv4Header{
+// ipv4HeaderFromBytes parses the passed bytes to a struct containing the IP header data and returns it.
+// It expects an array of at least 20 bytes
+func ipv4HeaderfromBytes(raw []byte) ipv4Header {
+	h := ipv4Header{
 		version:        raw[0] >> 4,
 		ihl:            raw[0] & 0x0F,
 		dscp:           raw[1] >> 2,
@@ -135,6 +143,8 @@ func ipv4HeaderfromBytes(raw []byte) IPv4Header {
 	return h
 }
 
+// IPv6PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
+// Returns an error if the IP header bytes are not 40
 func Ipv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
 	frame, err := EthFrameFromBytes(raw[:14])
 	if err != nil {
@@ -152,6 +162,7 @@ func Ipv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
 	}, nil
 }
 
+// Info returns an human-readable string containing the IPv6 packet data
 func (p *IPv6Packet) Info() string {
 	pv := protocolValues[p.ipHeader.nextHeader]
 	return fmt.Sprintf(`
@@ -171,14 +182,16 @@ Hop Limit: %d
 Source IP: %s
 Destination IP: %s
 `,
-		p.ethFrame.info(),
+		p.ethFrame.Info(),
 		p.ipHeader.version, p.ipHeader.trafficClass, p.ipHeader.flowLabel, p.ipHeader.payloadLength,
 		p.ipHeader.nextHeader, pv, p.ipHeader.hopLimit, p.ipHeader.sourceIP, p.ipHeader.destinationIP,
 	)
 }
 
-func ipv6HeaderfromBytes(raw []byte) IPv6Header {
-	return IPv6Header{
+// ipv6HeaderFromBytes parses the passed bytes to a struct containing the IP header data and returns it.
+// It expects an array of 40 bytes
+func ipv6HeaderfromBytes(raw []byte) ipv6Header {
+	return ipv6Header{
 		version:       raw[0] >> 4,
 		trafficClass:  (raw[0]&0x0F)<<4 | raw[1]>>4,
 		flowLabel:     uint32(raw[1]&0x0F)<<16 | uint32(raw[2])<<8 | uint32(raw[3]),
