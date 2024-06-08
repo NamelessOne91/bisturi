@@ -10,3 +10,9 @@ run: build
 
 test:
 	@$$GO_EXECUTABLE_PATH test -v -race ./...
+
+coverage:
+	@$$GO_EXECUTABLE_PATH test -v -race --cover --coverprofile=cover.profile ./...
+
+coverage-report: coverage
+	@go tool cover -html=cover.profile
