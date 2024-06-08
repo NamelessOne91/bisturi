@@ -15,23 +15,27 @@ var etherTypesValues = map[uint16]string{
 	0x8808: "Ethernet flow control",
 }
 
-type ethernetFrame struct {
+type EthernetFrame struct {
 	destinationMAC net.HardwareAddr
 	sourceMAC      net.HardwareAddr
 	etherType      uint16
 }
 
-var errETHFrameTooShort = errors.New("ethernet frame header must be 14 bytes")
+var errInvalidETHFrame = errors.New("ethernet frame header must be 14 bytes")
 
-func ethFrameFromBytes(raw []byte) ethernetFrame {
-	return ethernetFrame{
+func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
+	if len(raw) != 14 {
+		return nil, errInvalidETHFrame
+	}
+
+	return &EthernetFrame{
 		destinationMAC: net.HardwareAddr(raw[0:6]),
 		sourceMAC:      net.HardwareAddr(raw[6:12]),
 		etherType:      binary.BigEndian.Uint16(raw[12:14]),
-	}
+	}, nil
 }
 
-func (f ethernetFrame) info() string {
+func (f *EthernetFrame) info() string {
 	etv := etherTypesValues[f.etherType]
 
 	return fmt.Sprintf(`Ethernet Frame

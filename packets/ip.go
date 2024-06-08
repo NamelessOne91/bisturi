@@ -17,16 +17,16 @@ var protocolValues = map[uint8]string{
 }
 
 type IPv4Packet struct {
-	ethFrame ethernetFrame
-	ipHeader ipv4Header
+	ethFrame EthernetFrame
+	ipHeader IPv4Header
 }
 
 type IPv6Packet struct {
-	ethFrame ethernetFrame
-	ipHeader ipv6Header
+	ethFrame EthernetFrame
+	ipHeader IPv6Header
 }
 
-type ipv4Header struct {
+type IPv4Header struct {
 	version        uint8
 	ihl            uint8
 	dscp           uint8
@@ -43,7 +43,7 @@ type ipv4Header struct {
 	options        []byte
 }
 
-type ipv6Header struct {
+type IPv6Header struct {
 	version       uint8
 	trafficClass  uint8
 	flowLabel     uint32
@@ -56,13 +56,13 @@ type ipv6Header struct {
 
 var errIPv4HeaderTooShort = errors.New("IPv4 header must be at least 20 bytes")
 var errIPv4HeaderLenLessThanIHL = errors.New("IPv4 header length less than indicated IHL")
-var errIPv6HeaderTooShort = errors.New("IPv6 header must be 40 bytes")
+var errInvalidIPv6Header = errors.New("IPv6 header must be 40 bytes")
 
 func IPv4PacketFromBytes(raw []byte) (*IPv4Packet, error) {
-	if len(raw) < 14 {
-		return nil, errETHFrameTooShort
+	frame, err := EthFrameFromBytes(raw[:14])
+	if err != nil {
+		return nil, err
 	}
-	frame := ethFrameFromBytes(raw[:14])
 
 	ipData := raw[14:]
 	if len(ipData) < 20 {
@@ -76,7 +76,7 @@ func IPv4PacketFromBytes(raw []byte) (*IPv4Packet, error) {
 	}
 
 	return &IPv4Packet{
-		ethFrame: frame,
+		ethFrame: *frame,
 		ipHeader: ipv4HeaderfromBytes(ipData[:hLen]),
 	}, nil
 }
@@ -112,8 +112,8 @@ Options: %v
 	)
 }
 
-func ipv4HeaderfromBytes(raw []byte) ipv4Header {
-	h := ipv4Header{
+func ipv4HeaderfromBytes(raw []byte) IPv4Header {
+	h := IPv4Header{
 		version:        raw[0] >> 4,
 		ihl:            raw[0] & 0x0F,
 		dscp:           raw[1] >> 2,
@@ -136,18 +136,18 @@ func ipv4HeaderfromBytes(raw []byte) ipv4Header {
 }
 
 func Ipv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
-	if len(raw) < 14 {
-		return nil, errETHFrameTooShort
+	frame, err := EthFrameFromBytes(raw[:14])
+	if err != nil {
+		return nil, err
 	}
-	frame := ethFrameFromBytes(raw[:14])
 
 	ipData := raw[14:]
 	if len(ipData) < 40 {
-		return nil, errIPv6HeaderTooShort
+		return nil, errInvalidIPv6Header
 	}
 
 	return &IPv6Packet{
-		ethFrame: frame,
+		ethFrame: *frame,
 		ipHeader: ipv6HeaderfromBytes(ipData[:40]),
 	}, nil
 }
@@ -177,8 +177,8 @@ Destination IP: %s
 	)
 }
 
-func ipv6HeaderfromBytes(raw []byte) ipv6Header {
-	return ipv6Header{
+func ipv6HeaderfromBytes(raw []byte) IPv6Header {
+	return IPv6Header{
 		version:       raw[0] >> 4,
 		trafficClass:  (raw[0]&0x0F)<<4 | raw[1]>>4,
 		flowLabel:     uint32(raw[1]&0x0F)<<16 | uint32(raw[2])<<8 | uint32(raw[3]),
