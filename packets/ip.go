@@ -148,7 +148,7 @@ func ipv4HeaderfromBytes(raw []byte) (*ipv4Header, error) {
 }
 
 // IPv6PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
-func Ipv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
+func IPv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
 	frame, err := EthFrameFromBytes(raw)
 	if err != nil {
 		return nil, err

@@ -107,7 +107,7 @@ func (rs *RawSocket) ReadPackets() {
 			}
 			log.Println(packet.Info())
 		case syscall.ETH_P_IPV6:
-			packet, err := packets.Ipv6PacketFromBytes(buf[:n])
+			packet, err := packets.IPv6PacketFromBytes(buf[:n])
 			if err != nil {
 				log.Println("Error reading IPv6 packet:", err)
 				continue
