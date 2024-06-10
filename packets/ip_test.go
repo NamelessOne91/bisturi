@@ -6,6 +6,133 @@ import (
 	"testing"
 )
 
+func TestIPv4PacketFromBytes(t *testing.T) {
+	tests := []struct {
+		name           string
+		raw            []byte
+		expectedPacket *IPv4Packet
+		expectedErr    error
+	}{
+		{
+			name: "Valid IPv4 packet",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// IPv4 Header
+				0x45, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00,
+				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
+				0xc0, 0xa8, 0x00, 0x01,
+			},
+			expectedPacket: &IPv4Packet{
+				ethFrame: EthernetFrame{
+					destinationMAC: net.HardwareAddr([]byte{0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD}),
+					sourceMAC:      net.HardwareAddr([]byte{0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE}),
+					etherType:      0x0800,
+				},
+				ipHeader: ipv4Header{
+					version:        4,
+					ihl:            5,
+					dscp:           0,
+					ecn:            0,
+					totalLength:    0x003c,
+					identification: 0x1c46,
+					flags:          2,
+					fragmentOffset: 0,
+					ttl:            0x40,
+					protocol:       0x06,
+					headerChecksum: 0xb1e6,
+					sourceIP:       net.IP([]byte{192, 168, 0, 104}),
+					destinationIP:  net.IP([]byte{192, 168, 0, 1}),
+					options:        nil,
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "Valid IPv4 packet with options",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// IPv4 Header with options (IHL = 6, header length = 24 bytes)
+				0x46, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00,
+				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
+				0xc0, 0xa8, 0x00, 0x01,
+				// Options (4 bytes)
+				0x01, 0x02, 0x03, 0x04,
+			},
+			expectedPacket: &IPv4Packet{
+				ethFrame: EthernetFrame{
+					destinationMAC: net.HardwareAddr([]byte{0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD}),
+					sourceMAC:      net.HardwareAddr([]byte{0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE}),
+					etherType:      0x0800,
+				},
+				ipHeader: ipv4Header{
+					version:        4,
+					ihl:            6,
+					dscp:           0,
+					ecn:            0,
+					totalLength:    0x003c,
+					identification: 0x1c46,
+					flags:          2,
+					fragmentOffset: 0,
+					ttl:            0x40,
+					protocol:       0x06,
+					headerChecksum: 0xb1e6,
+					sourceIP:       net.IP([]byte{192, 168, 0, 104}),
+					destinationIP:  net.IP([]byte{192, 168, 0, 1}),
+					options:        []byte{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "Invalid Ethernet frame",
+			raw: []byte{
+				// Incomplete Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00,
+			},
+			expectedPacket: nil,
+			expectedErr:    errInvalidETHFrame,
+		},
+		{
+			name: "Invalid IPv4 header",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// Incomplete IPv4 Header
+				0x45, 0x00, 0x00, 0x3c, 0x1c,
+			},
+			expectedPacket: nil,
+			expectedErr:    errIPv4HeaderTooShort,
+		},
+		{
+			name: "IHL does not match actual header length",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// IPv4 Header with IHL indicating 6 words (24 bytes) but actual length is only 20 bytes
+				0x46, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00,
+				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
+				0xc0, 0xa8, 0x00, 0x01,
+			},
+			expectedPacket: nil,
+			expectedErr:    errIPv4HeaderLenLessThanIHL,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, err := IPv4PacketFromBytes(tt.raw)
+			if tt.expectedErr != err {
+				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
+			}
+			if tt.expectedErr == nil && !reflect.DeepEqual(h, tt.expectedPacket) {
+				t.Errorf("expected IPv4 packet to be %+v - got %+v", tt.expectedPacket, h)
+			}
+		})
+	}
+}
+
 func TestIPv4HeaderFromBytes(t *testing.T) {
 	tests := []struct {
 		name           string
