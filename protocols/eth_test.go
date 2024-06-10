@@ -1,4 +1,4 @@
-package packets
+package protocols
 
 import "testing"
 
