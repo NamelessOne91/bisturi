@@ -1,3 +1,5 @@
+![Simple CI](https://github.com/NamelessOne91/bisturi/actions/workflows/simple_ci.yml/badge.svg)
+
 # bisturi
 Poor men's network analyzer
 
