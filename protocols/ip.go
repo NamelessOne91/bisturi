@@ -24,6 +24,7 @@ type IPPacket interface {
 	Header() IPHeader
 }
 
+// IPHeader defines method supported both IPv4 and IPv6 headers
 type IPHeader interface {
 	Len() int
 	TransportLayerProtocol() string
@@ -75,6 +76,8 @@ var errIPv4HeaderTooShort = errors.New("IPv4 header must be at least 20 bytes")
 var errIPv4HeaderLenLessThanIHL = errors.New("IPv4 header length less than indicated IHL")
 var errInvalidIPv6Header = errors.New("IPv6 header must be 40 bytes")
 
+// IPPacketFromBytes parses an IPv4 or IPv6 packet's data from the passed raw data and return the interface representing it.
+// An error is returned if the headers' constraints are not respected.
 func IPPacketFromBytes(raw []byte) (IPPacket, error) {
 	if len(raw) < 15 {
 		return nil, errInvalidIPPacket
@@ -197,7 +200,7 @@ func ipv4HeaderFromBytes(raw []byte) (*ipv4Header, error) {
 	return h, nil
 }
 
-// ipv6PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
+// ipv6PacketsFromFromBytes parses a slice of bytes to extract headers and payload, returning a struct pointer.
 func ipv6PacketFromBytes(raw []byte) (*ipv6Packet, error) {
 	frame, err := EthFrameFromBytes(raw)
 	if err != nil {
