@@ -17,16 +17,28 @@ var protocolValues = map[uint8]string{
 	89: "OSPF",
 }
 
-// IPv4Packet contains the IP packet data (headers and payload)
-type IPv4Packet struct {
-	ethFrame EthernetFrame
-	ipHeader ipv4Header
+// IPPacket defines method supported both for IPv4 and IPv6 packets
+type IPPacket interface {
+	Info() string
+	Version() uint8
+	Header() IPHeader
 }
 
-// IPv6Packet contains the IP packet data (headers and payload)
-type IPv6Packet struct {
+type IPHeader interface {
+	Len() int
+	TransportLayerProtocol() string
+}
+
+// ipv4Packet contains the IP packet data (headers and payload)
+type ipv4Packet struct {
 	ethFrame EthernetFrame
-	ipHeader ipv6Header
+	header   ipv4Header
+}
+
+// ipv6Packet contains the IP packet data (headers and payload)
+type ipv6Packet struct {
+	ethFrame EthernetFrame
+	header   ipv6Header
 }
 
 type ipv4Header struct {
@@ -57,32 +69,70 @@ type ipv6Header struct {
 	destinationIP net.IP
 }
 
+var errInvalidIPPacket = errors.New("invalid IP packet")
+var errInvalidIPVersion = errors.New("invalid IP version (not 4 or 6)")
 var errIPv4HeaderTooShort = errors.New("IPv4 header must be at least 20 bytes")
 var errIPv4HeaderLenLessThanIHL = errors.New("IPv4 header length less than indicated IHL")
 var errInvalidIPv6Header = errors.New("IPv6 header must be 40 bytes")
 
-// IPv4PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
-func IPv4PacketFromBytes(raw []byte) (*IPv4Packet, error) {
+func IPPacketFromBytes(raw []byte) (IPPacket, error) {
+	if len(raw) < 15 {
+		return nil, errInvalidIPPacket
+	}
+	version := raw[14] >> 4
+
+	var packet IPPacket
+	var err error
+	if version == 4 {
+		packet, err = ipv4PacketFromBytes(raw)
+	} else if version == 6 {
+		packet, err = ipv6PacketFromBytes(raw)
+	} else {
+		return nil, errInvalidIPVersion
+	}
+
+	return packet, err
+}
+
+// ipv4PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
+func ipv4PacketFromBytes(raw []byte) (*ipv4Packet, error) {
 	frame, err := EthFrameFromBytes(raw)
 	if err != nil {
 		return nil, err
 	}
 
 	ipData := raw[14:]
-	h, err := ipv4HeaderfromBytes(ipData)
+	h, err := ipv4HeaderFromBytes(ipData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &IPv4Packet{
+	return &ipv4Packet{
 		ethFrame: *frame,
-		ipHeader: *h,
+		header:   *h,
 	}, nil
 }
 
+// TransportLayerProtocol returns the OSI Layer 4 procotol defined in the packet's header
+func (h ipv4Header) TransportLayerProtocol() string {
+	return protocolValues[h.protocol]
+}
+
+// HeaderLen returns the IPv4 header length in bytes
+func (h ipv4Header) Len() int {
+	return int(h.ihl) * 4
+}
+
+func (p ipv4Packet) Header() IPHeader {
+	return p.header
+}
+
+func (p ipv4Packet) Version() uint8 {
+	return p.header.version
+}
+
 // Info returns an human-readable string containing the IPv6 packet data
-func (p *IPv4Packet) Info() string {
-	pv := protocolValues[p.ipHeader.protocol]
+func (p ipv4Packet) Info() string {
 	return fmt.Sprintf(`
 IPv4 packet
 
@@ -106,15 +156,15 @@ Destination IP: %s
 Options: %v
 `,
 		p.ethFrame.Info(),
-		p.ipHeader.version, p.ipHeader.ihl*4, p.ipHeader.dscp, p.ipHeader.ecn, p.ipHeader.totalLength, p.ipHeader.identification,
-		p.ipHeader.flags, p.ipHeader.fragmentOffset, p.ipHeader.ttl, p.ipHeader.protocol, pv, p.ipHeader.headerChecksum,
-		p.ipHeader.sourceIP, p.ipHeader.destinationIP, p.ipHeader.options,
+		p.header.version, p.header.ihl*4, p.header.dscp, p.header.ecn, p.header.totalLength, p.header.identification,
+		p.header.flags, p.header.fragmentOffset, p.header.ttl, p.header.protocol, p.header.TransportLayerProtocol(), p.header.headerChecksum,
+		p.header.sourceIP, p.header.destinationIP, p.header.options,
 	)
 }
 
 // ipv4HeaderFromBytes parses the passed bytes to a struct containing the IP header data and returns a pointer to it.
 // It expects an array of at least 20 bytes or the defined IHL
-func ipv4HeaderfromBytes(raw []byte) (*ipv4Header, error) {
+func ipv4HeaderFromBytes(raw []byte) (*ipv4Header, error) {
 	if len(raw) < 20 {
 		return nil, errIPv4HeaderTooShort
 	}
@@ -147,28 +197,45 @@ func ipv4HeaderfromBytes(raw []byte) (*ipv4Header, error) {
 	return h, nil
 }
 
-// IPv6PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
-func IPv6PacketFromBytes(raw []byte) (*IPv6Packet, error) {
+// ipv6PacketsFromFromBytes parses an array of bytes to extract headers and payload, returning a struct pointer.
+func ipv6PacketFromBytes(raw []byte) (*ipv6Packet, error) {
 	frame, err := EthFrameFromBytes(raw)
 	if err != nil {
 		return nil, err
 	}
 
 	ipData := raw[14:]
-	h, err := ipv6HeaderfromBytes(ipData)
+	h, err := ipv6HeaderFromBytes(ipData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &IPv6Packet{
+	return &ipv6Packet{
 		ethFrame: *frame,
-		ipHeader: *h,
+		header:   *h,
 	}, nil
 }
 
+// TransportLayerProtocol returns the OSI Layer 4 procotol defined in the packet's header
+func (h ipv6Header) TransportLayerProtocol() string {
+	return protocolValues[h.nextHeader]
+}
+
+// HeaderLen returns the IPv6 header length (40) in bytes
+func (p ipv6Header) Len() int {
+	return 40
+}
+
+func (p ipv6Packet) Version() uint8 {
+	return p.header.version
+}
+
+func (p ipv6Packet) Header() IPHeader {
+	return p.header
+}
+
 // Info returns an human-readable string containing the IPv6 packet data
-func (p *IPv6Packet) Info() string {
-	pv := protocolValues[p.ipHeader.nextHeader]
+func (p ipv6Packet) Info() string {
 	return fmt.Sprintf(`
 IPv6 packet
 
@@ -187,14 +254,14 @@ Source IP: %s
 Destination IP: %s
 `,
 		p.ethFrame.Info(),
-		p.ipHeader.version, p.ipHeader.trafficClass, p.ipHeader.flowLabel, p.ipHeader.payloadLength,
-		p.ipHeader.nextHeader, pv, p.ipHeader.hopLimit, p.ipHeader.sourceIP, p.ipHeader.destinationIP,
+		p.header.version, p.header.trafficClass, p.header.flowLabel, p.header.payloadLength,
+		p.header.nextHeader, p.header.TransportLayerProtocol(), p.header.hopLimit, p.header.sourceIP, p.header.destinationIP,
 	)
 }
 
 // ipv6HeaderFromBytes parses the passed bytes to a struct containing the IP header data and returns a pointer to it.
 // It expects an array of at least 40 bytes
-func ipv6HeaderfromBytes(raw []byte) (*ipv6Header, error) {
+func ipv6HeaderFromBytes(raw []byte) (*ipv6Header, error) {
 	if len(raw) < 40 {
 		return nil, errInvalidIPv6Header
 	}

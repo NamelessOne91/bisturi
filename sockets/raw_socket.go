@@ -100,16 +100,10 @@ func (rs *RawSocket) ReadPackets() {
 
 		switch rs.ethType {
 		case syscall.ETH_P_IP:
-			packet, err := protocols.IPv4PacketFromBytes(buf[:n])
-			if err != nil {
-				log.Println("Error reading IPv4 packet:", err)
-				continue
-			}
-			log.Println(packet.Info())
 		case syscall.ETH_P_IPV6:
-			packet, err := protocols.IPv6PacketFromBytes(buf[:n])
+			packet, err := protocols.IPPacketFromBytes(buf[:n])
 			if err != nil {
-				log.Println("Error reading IPv6 packet:", err)
+				log.Println("Error reading IP packet:", err)
 				continue
 			}
 			log.Println(packet.Info())

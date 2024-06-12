@@ -10,7 +10,7 @@ func TestIPv4PacketFromBytes(t *testing.T) {
 	tests := []struct {
 		name           string
 		raw            []byte
-		expectedPacket *IPv4Packet
+		expectedPacket *ipv4Packet
 		expectedErr    error
 	}{
 		{
@@ -23,13 +23,13 @@ func TestIPv4PacketFromBytes(t *testing.T) {
 				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
 				0xc0, 0xa8, 0x00, 0x01,
 			},
-			expectedPacket: &IPv4Packet{
+			expectedPacket: &ipv4Packet{
 				ethFrame: EthernetFrame{
 					destinationMAC: net.HardwareAddr([]byte{0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD}),
 					sourceMAC:      net.HardwareAddr([]byte{0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE}),
 					etherType:      0x0800,
 				},
-				ipHeader: ipv4Header{
+				header: ipv4Header{
 					version:        4,
 					ihl:            5,
 					dscp:           0,
@@ -60,13 +60,13 @@ func TestIPv4PacketFromBytes(t *testing.T) {
 				// Options (4 bytes)
 				0x01, 0x02, 0x03, 0x04,
 			},
-			expectedPacket: &IPv4Packet{
+			expectedPacket: &ipv4Packet{
 				ethFrame: EthernetFrame{
 					destinationMAC: net.HardwareAddr([]byte{0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD}),
 					sourceMAC:      net.HardwareAddr([]byte{0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE}),
 					etherType:      0x0800,
 				},
-				ipHeader: ipv4Header{
+				header: ipv4Header{
 					version:        4,
 					ihl:            6,
 					dscp:           0,
@@ -122,7 +122,7 @@ func TestIPv4PacketFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := IPv4PacketFromBytes(tt.raw)
+			h, err := ipv4PacketFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
@@ -218,7 +218,7 @@ func TestIPv4HeaderFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := ipv4HeaderfromBytes(tt.raw)
+			h, err := ipv4HeaderFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
@@ -233,7 +233,7 @@ func TestIPv6PacketFromBytes(t *testing.T) {
 	tests := []struct {
 		name           string
 		raw            []byte
-		expectedPacket *IPv6Packet
+		expectedPacket *ipv6Packet
 		expectedErr    error
 	}{
 		{
@@ -248,13 +248,13 @@ func TestIPv6PacketFromBytes(t *testing.T) {
 				0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x02, 0x1c, 0x7e, 0xff, 0xfe, 0xe4, 0x2c, 0x01,
 			},
-			expectedPacket: &IPv6Packet{
+			expectedPacket: &ipv6Packet{
 				ethFrame: EthernetFrame{
 					destinationMAC: net.HardwareAddr([]byte{0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD}),
 					sourceMAC:      net.HardwareAddr([]byte{0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE}),
 					etherType:      0x86DD,
 				},
-				ipHeader: ipv6Header{
+				header: ipv6Header{
 					version:       6,
 					trafficClass:  0,
 					flowLabel:     0,
@@ -291,7 +291,7 @@ func TestIPv6PacketFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := IPv6PacketFromBytes(tt.raw)
+			h, err := ipv6PacketFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
@@ -367,7 +367,7 @@ func TestIPv6HeaderFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := ipv6HeaderfromBytes(tt.raw)
+			h, err := ipv6HeaderFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
