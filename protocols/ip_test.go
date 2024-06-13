@@ -6,6 +6,97 @@ import (
 	"testing"
 )
 
+func TestIPPacketFromBytes(t *testing.T) {
+	tests := []struct {
+		name                   string
+		raw                    []byte
+		headerLen              int
+		version                uint8
+		transportLayerProtocol string
+		expectedErr            error
+	}{
+		{
+			name: "Valid IPv4 packet ",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// IPv4 Header
+				0x45, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00,
+				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
+				0xc0, 0xa8, 0x00, 0x01,
+			},
+			headerLen:              20,
+			version:                4,
+			transportLayerProtocol: "TCP",
+			expectedErr:            nil,
+		},
+		{
+			name: "Valid IPv6 packet",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x86, 0xDD,
+				// IPv6 Header
+				0x60, 0x00, 0x00, 0x00, 0x00, 0x14, 0x11, 0x40,
+				0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x02, 0x1c, 0x7e, 0xff, 0xfe, 0xe4, 0x2c, 0x00,
+				0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x02, 0x1c, 0x7e, 0xff, 0xfe, 0xe4, 0x2c, 0x01,
+			},
+			headerLen:              40,
+			version:                6,
+			transportLayerProtocol: "UDP",
+			expectedErr:            nil,
+		},
+		{
+			name: "Invalid IP packet",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// missing Header
+			},
+			headerLen:              0,
+			version:                0,
+			transportLayerProtocol: "",
+			expectedErr:            errInvalidIPPacket,
+		},
+		{
+			name: "Invalid IP packet version",
+			raw: []byte{
+				// Ethernet Frame
+				0x00, 0x1A, 0xA0, 0xBB, 0xCC, 0xDD, 0x00, 0x1A, 0xB0, 0xCC, 0xDD, 0xEE, 0x08, 0x00,
+				// Ipv4 Header with invalid version
+				0x33, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00,
+				0x40, 0x06, 0xb1, 0xe6, 0xc0, 0xa8, 0x00, 0x68,
+				0xc0, 0xa8, 0x00, 0x01,
+			},
+			headerLen:              0,
+			version:                0,
+			transportLayerProtocol: "",
+			expectedErr:            errInvalidIPVersion,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			packet, err := IPPacketFromBytes(tt.raw)
+			if tt.expectedErr != err {
+				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
+			}
+			if tt.expectedErr == nil {
+				if tt.headerLen != packet.Header().Len() {
+					t.Errorf("expected IP header length to be %d - got %d", tt.headerLen, packet.Header().Len())
+				}
+				if tt.version != packet.Version() {
+					t.Errorf("expected IP Packet version to be %d - got %d", tt.version, packet.Version())
+				}
+				if tt.transportLayerProtocol != packet.Header().TransportLayerProtocol() {
+					t.Errorf("expected  IP Packet transport layer protocol to be %s - got %s", tt.transportLayerProtocol, packet.Header().TransportLayerProtocol())
+				}
+			}
+		})
+	}
+}
+
 func TestIPv4PacketFromBytes(t *testing.T) {
 	tests := []struct {
 		name           string
