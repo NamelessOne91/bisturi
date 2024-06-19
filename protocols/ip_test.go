@@ -27,7 +27,7 @@ func TestIPPacketFromBytes(t *testing.T) {
 			},
 			headerLen:              20,
 			version:                4,
-			transportLayerProtocol: "TCP",
+			transportLayerProtocol: "tcp",
 			expectedErr:            nil,
 		},
 		{
@@ -44,7 +44,7 @@ func TestIPPacketFromBytes(t *testing.T) {
 			},
 			headerLen:              40,
 			version:                6,
-			transportLayerProtocol: "UDP",
+			transportLayerProtocol: "udp",
 			expectedErr:            nil,
 		},
 		{
@@ -213,12 +213,12 @@ func TestIPv4PacketFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := ipv4PacketFromBytes(tt.raw)
+			p, err := ipv4PacketFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
-			if tt.expectedErr == nil && !reflect.DeepEqual(h, tt.expectedPacket) {
-				t.Errorf("expected IPv4 packet to be %+v - got %+v", tt.expectedPacket, h)
+			if tt.expectedErr == nil && !compareIPv4Packets(tt.expectedPacket, p) {
+				t.Errorf("expected IPv4 packet to be %+v - got %+v", tt.expectedPacket, p)
 			}
 		})
 	}
@@ -382,12 +382,12 @@ func TestIPv6PacketFromBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h, err := ipv6PacketFromBytes(tt.raw)
+			p, err := ipv6PacketFromBytes(tt.raw)
 			if tt.expectedErr != err {
 				t.Errorf("expected error: %v - got %v", tt.expectedErr, err)
 			}
-			if tt.expectedErr == nil && !reflect.DeepEqual(h, tt.expectedPacket) {
-				t.Errorf("expected IPv6 packet to be %+v - got %+v", tt.expectedPacket, h)
+			if tt.expectedErr == nil && !compareIPv6Packets(tt.expectedPacket, p) {
+				t.Errorf("expected IPv6 packet to be %+v - got %+v", tt.expectedPacket, p)
 			}
 		})
 	}
@@ -467,4 +467,33 @@ func TestIPv6HeaderFromBytes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func compareIPv4Packets(a, b *ipv4Packet) bool {
+	return reflect.DeepEqual(a.ethFrame, b.ethFrame) &&
+		a.header.version == b.header.version &&
+		a.header.ihl == b.header.ihl &&
+		a.header.dscp == b.header.dscp &&
+		a.header.ecn == b.header.ecn &&
+		a.header.totalLength == b.header.totalLength &&
+		a.header.flags == b.header.flags &&
+		a.header.identification == b.header.identification &&
+		a.header.fragmentOffset == b.header.fragmentOffset &&
+		a.header.protocol == b.header.protocol &&
+		a.header.headerChecksum == b.header.headerChecksum &&
+		a.header.sourceIP.Equal(b.header.sourceIP) &&
+		a.header.destinationIP.Equal(b.header.destinationIP) &&
+		reflect.DeepEqual(a.header.options, b.header.options)
+}
+
+func compareIPv6Packets(a, b *ipv6Packet) bool {
+	return reflect.DeepEqual(a.ethFrame, b.ethFrame) &&
+		a.header.version == b.header.version &&
+		a.header.trafficClass == b.header.trafficClass &&
+		a.header.flowLabel == b.header.flowLabel &&
+		a.header.payloadLength == b.header.payloadLength &&
+		a.header.nextHeader == b.header.nextHeader &&
+		a.header.hopLimit == b.header.hopLimit &&
+		a.header.sourceIP.Equal(b.header.sourceIP) &&
+		a.header.destinationIP.Equal(b.header.destinationIP)
 }

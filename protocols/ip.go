@@ -9,12 +9,12 @@ import (
 
 // maps the IP header values to the corresponding transport layer protocol
 var protocolValues = map[uint8]string{
-	1:  "ICMP",
-	6:  "TCP",
-	17: "UDP",
-	41: "IPv6",
-	58: "ICMPv6",
-	89: "OSPF",
+	1:  "icmp",
+	6:  "tcp",
+	17: "udp",
+	41: "ipv6",
+	58: "icmpv6",
+	89: "ospf",
 }
 
 // IPPacket defines method supported both for IPv4 and IPv6 packets
@@ -22,6 +22,7 @@ type IPPacket interface {
 	Info() string
 	Version() uint8
 	Header() IPHeader
+	Payload() []byte
 }
 
 // IPHeader defines method supported both IPv4 and IPv6 headers
@@ -34,12 +35,14 @@ type IPHeader interface {
 type ipv4Packet struct {
 	ethFrame EthernetFrame
 	header   ipv4Header
+	payload  []byte
 }
 
 // ipv6Packet contains the IP packet data (headers and payload)
 type ipv6Packet struct {
 	ethFrame EthernetFrame
 	header   ipv6Header
+	payload  []byte
 }
 
 type ipv4Header struct {
@@ -113,6 +116,7 @@ func ipv4PacketFromBytes(raw []byte) (*ipv4Packet, error) {
 	return &ipv4Packet{
 		ethFrame: *frame,
 		header:   *h,
+		payload:  ipData[h.Len():],
 	}, nil
 }
 
@@ -134,14 +138,14 @@ func (p ipv4Packet) Version() uint8 {
 	return p.header.version
 }
 
+func (p ipv4Packet) Payload() []byte {
+	return p.payload
+}
+
 // Info returns an human-readable string containing the IPv6 packet data
 func (p ipv4Packet) Info() string {
 	return fmt.Sprintf(`
 IPv4 packet
-
-===============================
-%s
-===============================
 
 Version: %d
 Header Length: %d bytes
@@ -157,11 +161,14 @@ Header Checksum: %d
 Source IP: %s
 Destination IP: %s
 Options: %v
+===============================
+%s
+===============================
 `,
-		p.ethFrame.Info(),
 		p.header.version, p.header.ihl*4, p.header.dscp, p.header.ecn, p.header.totalLength, p.header.identification,
 		p.header.flags, p.header.fragmentOffset, p.header.ttl, p.header.protocol, p.header.TransportLayerProtocol(), p.header.headerChecksum,
 		p.header.sourceIP, p.header.destinationIP, p.header.options,
+		p.ethFrame.Info(),
 	)
 }
 
@@ -195,7 +202,7 @@ func ipv4HeaderFromBytes(raw []byte) (*ipv4Header, error) {
 	}
 
 	if len(raw) > 20 {
-		h.options = raw[20:]
+		h.options = raw[20:hLen]
 	}
 	return h, nil
 }
@@ -216,6 +223,7 @@ func ipv6PacketFromBytes(raw []byte) (*ipv6Packet, error) {
 	return &ipv6Packet{
 		ethFrame: *frame,
 		header:   *h,
+		payload:  ipData[h.Len():],
 	}, nil
 }
 
@@ -237,17 +245,16 @@ func (p ipv6Packet) Header() IPHeader {
 	return p.header
 }
 
+func (p ipv6Packet) Payload() []byte {
+	return p.payload
+}
+
 // Info returns an human-readable string containing the IPv6 packet data
 func (p ipv6Packet) Info() string {
 	return fmt.Sprintf(`
 IPv6 packet
 
-===============================
-%s
-===============================
-
 Version: %d
-Header Length: 40 bytes
 Traffic Class: %d
 Flow Label: %d
 Payload Length: %d
@@ -255,10 +262,13 @@ Transport Layer Protocol: %d (%s)
 Hop Limit: %d
 Source IP: %s
 Destination IP: %s
+===============================
+%s
+===============================
 `,
-		p.ethFrame.Info(),
 		p.header.version, p.header.trafficClass, p.header.flowLabel, p.header.payloadLength,
 		p.header.nextHeader, p.header.TransportLayerProtocol(), p.header.hopLimit, p.header.sourceIP, p.header.destinationIP,
+		p.ethFrame.Info(),
 	)
 }
 
