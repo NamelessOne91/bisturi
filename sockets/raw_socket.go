@@ -25,7 +25,7 @@ var protocolEthernetType = map[string]uint16{
 	"tcp6": syscall.ETH_P_IPV6,
 }
 
-var errUnsupportedProtocol = errors.New("unsupported protocol")
+var errUnsupportedProtocol = errors.New("unsupported protocol - must be one of: all, arp, ip, ipv6, udp, udp6, tcp, tcp6")
 
 // hostToNetworkShort converts a short (uint16) from host (usually Little Endian)
 // to network (Big Endian) byte order
@@ -34,11 +34,12 @@ func hostToNetworkShort(i uint16) uint16 {
 }
 
 // RawSocket represents a raw socket and stores info about its file descriptor,
-// Ethernet protocl type and Link Layer info
+// Ethernet protocol type and Link Layer info
 type RawSocket struct {
 	shutdownChan chan os.Signal
 	fd           int
 	ethType      uint16
+	layer4Filter string
 	sll          syscall.SockaddrLinklayer
 }
 
@@ -50,9 +51,10 @@ func NewRawSocket(protocol string) (*RawSocket, error) {
 		return nil, errUnsupportedProtocol
 	}
 
-	rawSocket := RawSocket{
+	rawSocket := &RawSocket{
 		shutdownChan: make(chan os.Signal, 1),
 		ethType:      ethType,
+		layer4Filter: protocol,
 	}
 	// AF_PACKET specifies a packet socket, operating at the data link layer (Layer 2)
 	// SOCK_RAW specifies a raw socket
@@ -62,7 +64,7 @@ func NewRawSocket(protocol string) (*RawSocket, error) {
 	}
 	rawSocket.fd = fd
 
-	return &rawSocket, nil
+	return rawSocket, nil
 }
 
 // BindSocket binds a raw socket  to a network interface allowing to monitor
@@ -98,15 +100,28 @@ func (rs *RawSocket) ReadPackets() {
 			continue
 		}
 
+		log.Printf("Read %d bytes from socket\n", n)
 		switch rs.ethType {
 		case syscall.ETH_P_IP:
+			fallthrough
 		case syscall.ETH_P_IPV6:
 			packet, err := protocols.IPPacketFromBytes(buf[:n])
 			if err != nil {
 				log.Println("Error reading IP packet:", err)
 				continue
 			}
-			log.Println(packet.Info())
+
+			l4Protocol := packet.Header().TransportLayerProtocol()
+			switch l4Protocol {
+			case "udp":
+				udpPacket, err := protocols.UDPPacketFromIPPacket(packet)
+				if err != nil {
+					log.Println("Error reading UDP packet:", err)
+					continue
+				}
+				log.Println(udpPacket.Info())
+			case "TCP":
+			}
 		}
 	}
 }
