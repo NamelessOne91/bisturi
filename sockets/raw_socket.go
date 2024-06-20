@@ -120,7 +120,13 @@ func (rs *RawSocket) ReadPackets() {
 					continue
 				}
 				log.Println(udpPacket.Info())
-			case "TCP":
+			case "tcp":
+				tcpPacket, err := protocols.TCPPacketFromIPPacket(packet)
+				if err != nil {
+					log.Println("Error reading TCP packet:", err)
+					continue
+				}
+				log.Println(tcpPacket.Info())
 			}
 		}
 	}
