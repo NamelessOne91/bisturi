@@ -24,11 +24,14 @@ var errInvalidUDPHeader = errors.New("UDP header must be 8 bytes")
 // An error is returned if the headers' constraints are not respected.
 func UDPPacketFromIPPacket(ip IPPacket) (*UDPPacket, error) {
 	udpHeader, err := udpHeaderFromBytes(ip.Payload())
+	if err != nil {
+		return nil, err
+	}
 
 	return &UDPPacket{
 		ipPacket: ip,
 		header:   *udpHeader,
-	}, err
+	}, nil
 }
 
 func udpv4PacketFromBytes(raw []byte) (*UDPPacket, error) {
