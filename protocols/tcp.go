@@ -61,18 +61,9 @@ func tcpHeaderFromBytes(raw []byte) (*tcpHeader, error) {
 	}, nil
 }
 
+// Info return an human-readable string containing the main TCP packet data
 func (p TCPPacket) Info() string {
-	return fmt.Sprintf(`
-TCP packet
-
-Source Port: %d
-Destination Port: %d
-Checksum: %d
-
-===============================
-%s
-===============================
-`,
-		p.header.sourcePort, p.header.sourcePort, p.header.checksum, p.ipPacket.Info(),
+	return fmt.Sprintf("%s - port %d to port %d",
+		p.ipPacket.Info(), p.header.sourcePort, p.header.destinationPort,
 	)
 }
