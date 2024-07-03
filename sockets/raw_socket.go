@@ -1,7 +1,6 @@
 package sockets
 
 import (
-	"errors"
 	"log"
 	"net"
 	"os"
@@ -12,20 +11,6 @@ import (
 )
 
 const mask = 0xff00
-
-// maps the protocol names to Ethernet protocol types values
-var protocolEthernetType = map[string]uint16{
-	"all":  syscall.ETH_P_ALL,
-	"arp":  syscall.ETH_P_ARP,
-	"ip":   syscall.ETH_P_IP,
-	"ipv6": syscall.ETH_P_IPV6,
-	"udp":  syscall.ETH_P_IP, // UDP and TCP are part of IP, need special handling if filtered specifically
-	"udp6": syscall.ETH_P_IPV6,
-	"tcp":  syscall.ETH_P_IP,
-	"tcp6": syscall.ETH_P_IPV6,
-}
-
-var errUnsupportedProtocol = errors.New("unsupported protocol - must be one of: all, arp, ip, ipv6, udp, udp6, tcp, tcp6")
 
 // hostToNetworkShort converts a short (uint16) from host (usually Little Endian)
 // to network (Big Endian) byte order
@@ -45,11 +30,7 @@ type RawSocket struct {
 
 // NewRawSocket opens a raw socket for the specified protocol by calling SYS_SOCKET
 // and returns the struct representing it, or eventual errors
-func NewRawSocket(protocol string) (*RawSocket, error) {
-	ethType, ok := protocolEthernetType[protocol]
-	if !ok {
-		return nil, errUnsupportedProtocol
-	}
+func NewRawSocket(protocol string, ethType uint16) (*RawSocket, error) {
 
 	rawSocket := &RawSocket{
 		shutdownChan: make(chan os.Signal, 1),
