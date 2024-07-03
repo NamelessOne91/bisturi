@@ -80,7 +80,7 @@ func (rs *RawSocket) Bind(iface net.Interface) error {
 		<-rs.shutdownChan
 		log.Println("Received interrupt, stopping...")
 		if err := syscall.Close(rs.fd); err != nil {
-			log.Printf("Failed to close rad socket with file descriptor %d", rs.fd)
+			log.Printf("Failed to close raw socket with file descriptor %d", rs.fd)
 			os.Exit(1)
 		}
 		os.Exit(0)

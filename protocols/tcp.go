@@ -16,17 +16,18 @@ type tcpHeader struct {
 	destinationPort uint16
 	sequenceNumber  uint32
 	ackNumber       uint32
-	rawOffset       uint8
-	reserved        uint8
-	flags           uint16
+	rawOffset       uint8 // rawOffset is in 4-byte words
+	flags           uint8
 	windowSize      uint16
 	checksum        uint16
 	urgentPointer   uint16
 	options         []byte
 }
 
-var errTCPHeaderTooShort = errors.New("TCP header must be at least 20 bytes")
-var errTCPHeaderLenMismatch = errors.New("TCP header length less than raw Offset")
+var (
+	errTCPHeaderTooShort    = errors.New("TCP header must be at least 20 bytes")
+	errTCPHeaderLenMismatch = errors.New("TCP header length less than raw Offset")
+)
 
 func TCPPacketFromIPPacket(ip IPPacket) (*TCPPacket, error) {
 	tcpHeader, err := tcpHeaderFromBytes(ip.Payload())
@@ -41,19 +42,20 @@ func tcpHeaderFromBytes(raw []byte) (*tcpHeader, error) {
 	if len(raw) < 20 {
 		return nil, errTCPHeaderTooShort
 	}
-	offset := (raw[12] >> 4)
-	hLen := int(offset * 4)
+
+	offset := raw[12] >> 4
+	hLen := int(offset) * 4
 	if len(raw) < hLen {
 		return nil, errTCPHeaderLenMismatch
 	}
+
 	return &tcpHeader{
 		sourcePort:      binary.BigEndian.Uint16(raw[0:2]),
 		destinationPort: binary.BigEndian.Uint16(raw[2:4]),
 		sequenceNumber:  binary.BigEndian.Uint32(raw[4:8]),
 		ackNumber:       binary.BigEndian.Uint32(raw[8:12]),
 		rawOffset:       offset,
-		reserved:        (raw[12] & 0x0E) >> 1,
-		flags:           binary.BigEndian.Uint16(raw[12:14]) & 0x1FF,
+		flags:           raw[13],
 		windowSize:      binary.BigEndian.Uint16(raw[14:16]),
 		checksum:        binary.BigEndian.Uint16(raw[16:18]),
 		urgentPointer:   binary.BigEndian.Uint16(raw[18:20]),
