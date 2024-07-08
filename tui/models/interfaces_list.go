@@ -83,7 +83,7 @@ func fetchInterfaces() tea.Cmd {
 	return func() tea.Msg {
 		ifaces, err := net.Interfaces()
 		if err != nil {
-			return errMsg{err: err}
+			return errMsg(err)
 		}
 		return networkInterfacesMsg(ifaces)
 	}

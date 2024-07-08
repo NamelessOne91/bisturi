@@ -43,5 +43,5 @@ func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
 func (f *EthernetFrame) Info() string {
 	etv := etherTypesValues[f.etherType]
 
-	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", f.sourceMAC, f.destinationMAC, etv)
+	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", etv, f.sourceMAC, f.destinationMAC)
 }

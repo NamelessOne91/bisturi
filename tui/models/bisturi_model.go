@@ -3,7 +3,9 @@ package tui
 import (
 	"fmt"
 	"net"
+	"strings"
 
+	"github.com/NamelessOne91/bisturi/sockets"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,25 +14,23 @@ import (
 type step uint8
 
 const (
-	setupStep step = iota
-	ifaceStep
-	protoStep
-	doneStep
+	retrieveIfaces step = iota
+	selectIface
+	selectProtocol
+	receivePackets
 )
 
-type errMsg struct {
-	err error
-}
-
-func (e errMsg) Error() string { return e.err.Error() }
+type errMsg error
 
 type bisturiModel struct {
 	step              step
-	startMenu         startMenuModel
 	spinner           spinner.Model
-	selectedInterface *net.Interface
+	startMenu         startMenuModel
+	packetsTable      packetsTablemodel
+	selectedInterface net.Interface
 	selectedProtocol  string
 	selectedEthType   uint16
+	rawSocket         *sockets.RawSocket
 	err               error
 }
 
@@ -39,45 +39,38 @@ func NewBisturiModel() *bisturiModel {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
 
 	return &bisturiModel{
-		step:      setupStep,
-		spinner:   s,
-		startMenu: startMenuModel{},
+		step:    retrieveIfaces,
+		spinner: s,
 	}
 }
 
 func (m bisturiModel) Init() tea.Cmd {
-	return tea.Sequence(m.spinner.Tick, fetchInterfaces())
+	return tea.Batch(m.spinner.Tick, fetchInterfaces())
 }
 
-func (m *bisturiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m bisturiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m.step {
+	case retrieveIfaces:
+		return m.updateLoading(msg)
+	case selectIface, selectProtocol:
+		return m.updateStartMenuSelection(msg)
+	case receivePackets:
+		return m.updateReceivingPacket(msg)
+	default:
+		return m, nil
+	}
+}
 
+func (m *bisturiModel) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case errMsg:
-		m.err = msg.err
+		m.err = msg
 		return m, tea.Quit
 
 	case networkInterfacesMsg:
 		m.startMenu = newStartMenuModel(msg)
-		m.step = ifaceStep
-		return m, nil
+		m.step = selectIface
 
-	case selectedInterfaceMsg:
-		iface, err := net.InterfaceByName(msg.name)
-		if err != nil {
-			return m, func() tea.Msg {
-				return errMsg{err: err}
-			}
-		}
-		m.selectedInterface = iface
-		m.step = protoStep
-		m.startMenu.step = protoStep
-		return m, nil
-
-	case selectedProtocolMsg:
-		m.selectedProtocol = msg.protocol
-		m.selectedEthType = msg.ethTytpe
-		m.step = doneStep
 		return m, nil
 
 	case tea.KeyMsg:
@@ -85,28 +78,79 @@ func (m *bisturiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
 		}
-
-	case spinner.TickMsg:
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
 	}
+	var cmd tea.Cmd
+	m.spinner, cmd = m.spinner.Update(msg)
+	return m, cmd
+}
+
+func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 
 	m.startMenu, cmd = m.startMenu.Update(msg)
+
+	switch msg := msg.(type) {
+	case selectedIfaceItemMsg:
+		iface, err := net.InterfaceByName(msg.name)
+		if err != nil {
+			m.err = err
+			return m, tea.Quit
+		}
+		m.selectedInterface = *iface
+		m.step = selectProtocol
+
+		return m, nil
+
+	case selectedProtocolItemMsg:
+		// SYS_SOCKET syscall
+		rs, err := sockets.NewRawSocket(msg.name, msg.ethType)
+		if err != nil {
+			return m, tea.Quit
+		}
+		// bind the socket to the network interface
+		err = rs.Bind(m.selectedInterface)
+		if err != nil {
+			m.err = err
+			return m, tea.Quit
+		}
+		m.selectedProtocol = msg.name
+		m.selectedEthType = msg.ethType
+		m.rawSocket = rs
+		m.step = receivePackets
+		m.packetsTable = newPacketsTable()
+
+		return m, nil
+	}
+	return m, cmd
+}
+
+func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	m.packetsTable, cmd = m.packetsTable.Update(msg)
+
 	return m, cmd
 }
 
 func (m bisturiModel) View() string {
 	if m.err != nil {
+		if m.rawSocket != nil {
+			m.rawSocket.Close()
+		}
 		return fmt.Sprintf("Error: %s\n", m.err)
 	}
 
+	sb := strings.Builder{}
 	switch m.step {
-	case ifaceStep, protoStep:
-		return m.startMenu.View()
-	case doneStep:
-		return fmt.Sprintf("Receiving packet on %s - %s\n", m.selectedInterface.Name, m.selectedProtocol)
+	case retrieveIfaces:
+		sb.WriteString(fmt.Sprintf("\n\n %s Retrieving network interfaces...\n\n", m.spinner.View()))
+	case selectIface, selectProtocol:
+		sb.WriteString(m.startMenu.View())
+	case receivePackets:
+		sb.WriteString(fmt.Sprintf("Receiving %s packets on %s ...\n", m.selectedProtocol, m.selectedInterface.Name))
+		sb.WriteString(m.packetsTable.View())
 	default:
-		return fmt.Sprintf("\n\n %s Retrieving network interfaces...\n\n", m.spinner.View())
+		sb.WriteString("The program is in an unkowqn state\n")
 	}
-
+	return sb.String()
 }
