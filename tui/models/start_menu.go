@@ -30,7 +30,7 @@ func newStartMenuModel(interfaces []net.Interface) startMenuModel {
 	plm := newProtocolsListModel(listWidth, listHeight)
 
 	return startMenuModel{
-		step:      ifaceStep,
+		step:      selectIface,
 		ifaceList: il,
 		protoList: plm,
 	}
@@ -42,10 +42,10 @@ func (m startMenuModel) Init() tea.Cmd {
 
 func (m startMenuModel) Update(msg tea.Msg) (startMenuModel, tea.Cmd) {
 	switch m.step {
-	case ifaceStep:
+	case selectIface:
 		model, cmd := m.ifaceList.Update(msg)
 		if i, ok := msg.(selectedIfaceItemMsg); ok {
-			m.step = protoStep
+			m.step = selectProtocol
 			return m, func() tea.Msg {
 				return selectedInterfaceMsg{
 					name: i.name,
@@ -55,7 +55,7 @@ func (m startMenuModel) Update(msg tea.Msg) (startMenuModel, tea.Cmd) {
 		m.ifaceList = model
 		return m, cmd
 
-	case protoStep:
+	case selectProtocol:
 		model, cmd := m.protoList.Update(msg)
 		if p, ok := msg.(selectedProtocolItemMsg); ok {
 			return m, func() tea.Msg {
@@ -74,9 +74,9 @@ func (m startMenuModel) Update(msg tea.Msg) (startMenuModel, tea.Cmd) {
 func (m startMenuModel) View() string {
 	var s string
 	switch m.step {
-	case ifaceStep:
+	case selectIface:
 		s = m.ifaceList.l.View()
-	case protoStep:
+	case selectProtocol:
 		s = m.protoList.l.View()
 	default:
 		return "Unkown step"
