@@ -1,141 +1,85 @@
 package tui
 
 import (
-	"fmt"
 	"net"
 
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type startMenuStep uint
-
-const (
-	ifaceStep startMenuStep = iota
-	protoStep
-	recvStep
-)
-
 type startMenuModel struct {
-	step           startMenuStep
-	ifaceListModel interfacesListModel
-	protoListModel protocolsListModel
-	chosenIface    *net.Interface
-	chosenProto    string
-	chosenEthType  uint16
-	err            error
+	step      step
+	ifaceList interfacesListModel
+	protoList protocolsListModel
 }
 
-func NewStartMenuModel() *startMenuModel {
+type selectedInterfaceMsg struct {
+	name string
+}
+
+type selectedProtocolMsg struct {
+	protocol string
+	ethTytpe uint16
+}
+
+func newStartMenuModel(interfaces []net.Interface) startMenuModel {
 	const listHeight = 50
 	const listWidth = 50
 
-	ilm := newInterfacesListModel(listWidth, listHeight)
+	il := newInterfacesListModel(listWidth, listHeight, interfaces)
 	plm := newProtocolsListModel(listWidth, listHeight)
 
-	return &startMenuModel{
-		ifaceListModel: ilm,
-		protoListModel: plm,
+	return startMenuModel{
+		step:      ifaceStep,
+		ifaceList: il,
+		protoList: plm,
 	}
 }
 
 func (m startMenuModel) Init() tea.Cmd {
-	return fetchInterfaces()
+	return nil
 }
 
-func (m startMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m startMenuModel) Update(msg tea.Msg) (startMenuModel, tea.Cmd) {
 	switch m.step {
 	case ifaceStep:
-		return m.updateInterfacesListModel(msg)
+		model, cmd := m.ifaceList.Update(msg)
+		if i, ok := msg.(selectedIfaceItemMsg); ok {
+			m.step = protoStep
+			return m, func() tea.Msg {
+				return selectedInterfaceMsg{
+					name: i.name,
+				}
+			}
+		}
+		m.ifaceList = model
+		return m, cmd
+
 	case protoStep:
-		return m.updateProtocolsListModel(msg)
-	case recvStep:
-		return m, tea.Quit
+		model, cmd := m.protoList.Update(msg)
+		if p, ok := msg.(selectedProtocolItemMsg); ok {
+			return m, func() tea.Msg {
+				return selectedProtocolMsg{
+					protocol: p.name,
+					ethTytpe: p.ethType,
+				}
+			}
+		}
+		m.protoList = model
+		return m, cmd
 	}
 	return m, nil
 }
 
 func (m startMenuModel) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("Error: %s\n", m.err)
-	}
-
 	var s string
 	switch m.step {
 	case ifaceStep:
-		s = m.ifaceListModel.l.View()
+		s = m.ifaceList.l.View()
 	case protoStep:
-		s = m.protoListModel.l.View()
-	case recvStep:
-		s = fmt.Sprintf("You chose %s - %s\n", m.chosenIface.Name, m.chosenProto)
+		s = m.protoList.l.View()
 	default:
 		return "Unkown step"
 	}
 	return lipgloss.NewStyle().Padding(1).Render(s)
-}
-
-func (m *startMenuModel) updateInterfacesListModel(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case errMsg:
-		m.err = msg.err
-		return m, tea.Quit
-
-	case networkInterfacesMsg:
-		items := make([]list.Item, len(msg))
-		for i, iface := range msg {
-			items[i] = ifaceItem{
-				name:  iface.Name,
-				flags: iface.Flags.String(),
-			}
-		}
-		cmd := m.ifaceListModel.l.SetItems(items)
-		return m, cmd
-
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "enter":
-			item, ok := m.ifaceListModel.l.SelectedItem().(ifaceItem)
-			if ok {
-				// retrieve the network interface
-				networkInterface, err := net.InterfaceByName(item.name)
-				if err != nil {
-					m.err = err
-					return m, tea.Quit
-				}
-				m.chosenIface = networkInterface
-				m.step = protoStep
-			}
-		}
-	}
-
-	var cmd tea.Cmd
-	m.ifaceListModel.l, cmd = m.ifaceListModel.l.Update(msg)
-	return m, cmd
-}
-
-func (m *startMenuModel) updateProtocolsListModel(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "enter":
-			p, ok := m.protoListModel.l.SelectedItem().(protoItem)
-			if ok {
-				m.chosenProto = p.name
-				m.chosenEthType = p.ethType
-				m.step = recvStep
-			}
-			return m, nil
-		}
-	}
-
-	var cmd tea.Cmd
-	m.protoListModel.l, cmd = m.protoListModel.l.Update(msg)
-	return m, cmd
 }
