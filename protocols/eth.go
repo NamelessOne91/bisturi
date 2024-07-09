@@ -21,6 +21,7 @@ type EthernetFrame struct {
 	destinationMAC net.HardwareAddr
 	sourceMAC      net.HardwareAddr
 	etherType      uint16
+	payload        []byte
 }
 
 var errInvalidETHFrame = errors.New("ethernet frame header must be 14 bytes")
@@ -36,6 +37,7 @@ func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
 		destinationMAC: net.HardwareAddr(raw[0:6]),
 		sourceMAC:      net.HardwareAddr(raw[6:12]),
 		etherType:      binary.BigEndian.Uint16(raw[12:14]),
+		payload:        raw[14:],
 	}, nil
 }
 
