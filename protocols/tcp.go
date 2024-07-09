@@ -69,3 +69,11 @@ func (p TCPPacket) Info() string {
 		p.ipPacket.Info(), p.header.sourcePort, p.header.destinationPort,
 	)
 }
+
+func (p TCPPacket) Source() string {
+	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Source(), p.header.sourcePort)
+}
+
+func (p TCPPacket) Destination() string {
+	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Destination(), p.header.destinationPort)
+}

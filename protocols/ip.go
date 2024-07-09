@@ -28,6 +28,8 @@ type IPPacket interface {
 // IPHeader defines method supported both IPv4 and IPv6 headers
 type IPHeader interface {
 	Len() int
+	Source() string
+	Destination() string
 	TransportLayerProtocol() string
 }
 
@@ -130,6 +132,14 @@ func (h ipv4Header) Len() int {
 	return int(h.ihl) * 4
 }
 
+func (p ipv4Header) Source() string {
+	return p.sourceIP.String()
+}
+
+func (p ipv4Header) Destination() string {
+	return p.destinationIP.String()
+}
+
 func (p ipv4Packet) Header() IPHeader {
 	return p.header
 }
@@ -216,6 +226,14 @@ func (p ipv6Header) Len() int {
 
 func (p ipv6Packet) Version() uint8 {
 	return p.header.version
+}
+
+func (p ipv6Header) Source() string {
+	return p.sourceIP.String()
+}
+
+func (p ipv6Header) Destination() string {
+	return p.destinationIP.String()
 }
 
 func (p ipv6Packet) Header() IPHeader {

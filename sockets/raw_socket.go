@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/NamelessOne91/bisturi/protocols"
@@ -16,6 +15,12 @@ const mask = 0xff00
 // to network (Big Endian) byte order
 func hostToNetworkShort(i uint16) uint16 {
 	return (i<<8)&mask | i>>8
+}
+
+type NetworkPacket interface {
+	Source() string
+	Destination() string
+	Info() string
 }
 
 // RawSocket represents a raw socket and stores info about its file descriptor,
@@ -54,18 +59,6 @@ func (rs *RawSocket) Bind(iface net.Interface) error {
 	// network stack uses Big Endian
 	rs.sll.Protocol = hostToNetworkShort(rs.ethType)
 	rs.sll.Ifindex = iface.Index
-
-	// handle graceful shutdown on CTRL + C and similar
-	signal.Notify(rs.shutdownChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-rs.shutdownChan
-		log.Println("Received interrupt, stopping...")
-		if err := syscall.Close(rs.fd); err != nil {
-			log.Printf("Failed to close raw socket with file descriptor %d", rs.fd)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}()
 
 	return syscall.Bind(rs.fd, &rs.sll)
 }

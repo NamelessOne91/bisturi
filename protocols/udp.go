@@ -34,47 +34,19 @@ func UDPPacketFromIPPacket(ip IPPacket) (*UDPPacket, error) {
 	}, nil
 }
 
-func udpv4PacketFromBytes(raw []byte) (*UDPPacket, error) {
-	ipPacket, err := ipv4PacketFromBytes(raw)
-	if err != nil {
-		return nil, err
-	}
-
-	// 14 bytes eth frame + (IPv4 IHL * 4)
-	offset := 14 + (ipPacket.header.ihl * 4)
-	h, err := udpHeaderFromBytes(raw[offset:])
-	if err != nil {
-		return nil, err
-	}
-
-	return &UDPPacket{
-		ipPacket: ipPacket,
-		header:   *h,
-	}, nil
-}
-
-func udpv6PacketFromBytes(raw []byte) (*UDPPacket, error) {
-	ipPacket, err := ipv6PacketFromBytes(raw)
-	if err != nil {
-		return nil, err
-	}
-	// 14 bytes eth frame + 40 IPv6 header
-	h, err := udpHeaderFromBytes(raw[54:])
-	if err != nil {
-		return nil, err
-	}
-
-	return &UDPPacket{
-		ipPacket: ipPacket,
-		header:   *h,
-	}, nil
-}
-
 // Info return an human-readable string containing the main UDP packet data
 func (p UDPPacket) Info() string {
 	return fmt.Sprintf("%s - port %d to port %d",
 		p.ipPacket.Info(), p.header.sourcePort, p.header.destinationPort,
 	)
+}
+
+func (p UDPPacket) Source() string {
+	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Source(), p.header.sourcePort)
+}
+
+func (p UDPPacket) Destination() string {
+	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Destination(), p.header.destinationPort)
 }
 
 // udpHeaderFromBytes parses the passed bytes to a struct containing the UDP header data and returns a pointer to it.
