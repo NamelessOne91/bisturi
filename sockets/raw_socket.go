@@ -1,6 +1,7 @@
 package sockets
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -63,10 +64,11 @@ func (rs *RawSocket) Bind(iface net.Interface) error {
 	return syscall.Bind(rs.fd, &rs.sll)
 }
 
-// ReadPackets calls SYS_RECVFROM to read packets traversing the binded network interface an display info about them.
-func (rs *RawSocket) ReadPackets() {
-	// read incoming packets
+// ReadToChan calls SYS_RECVFROM to read data traversing the binded network interface and sends its representation to the passed channel.
+// Errors are sent to another passed channel
+func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- error) {
 	buf := make([]byte, 4096)
+
 	for {
 		n, _, err := syscall.Recvfrom(rs.fd, buf, 0)
 		if err != nil {
@@ -74,33 +76,32 @@ func (rs *RawSocket) ReadPackets() {
 			continue
 		}
 
-		log.Printf("Read %d bytes from socket\n", n)
 		switch rs.ethType {
 		case syscall.ETH_P_IP:
 			fallthrough
 		case syscall.ETH_P_IPV6:
 			packet, err := protocols.IPPacketFromBytes(buf[:n])
 			if err != nil {
-				log.Println("Error reading IP packet:", err)
+				errChan <- fmt.Errorf("error reading IP packet: %v", err)
 				continue
 			}
 
 			l4Protocol := packet.Header().TransportLayerProtocol()
 			switch l4Protocol {
 			case "udp":
-				udpPacket, err := protocols.UDPPacketFromIPPacket(packet)
+				packet, err := protocols.UDPPacketFromIPPacket(packet)
 				if err != nil {
-					log.Println("Error reading UDP packet:", err)
+					errChan <- fmt.Errorf("error reading UDP packet: %v", err)
 					continue
 				}
-				log.Println(udpPacket.Info())
+				dataChan <- packet
 			case "tcp":
-				tcpPacket, err := protocols.TCPPacketFromIPPacket(packet)
+				packet, err := protocols.TCPPacketFromIPPacket(packet)
 				if err != nil {
-					log.Println("Error reading TCP packet:", err)
+					errChan <- fmt.Errorf("error reading TCP packet: %v", err)
 					continue
 				}
-				log.Println(tcpPacket.Info())
+				dataChan <- packet
 			}
 		}
 	}
