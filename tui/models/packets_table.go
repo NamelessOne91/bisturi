@@ -3,22 +3,21 @@ package tui
 import (
 	"strings"
 
-	"github.com/NamelessOne91/bisturi/protocols"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 )
 
 const (
-	columnKeyProtocol  = "protocol"
+	columKeyDate       = "date"
 	columnKeyInterface = "interface"
+	columnKeyProtocol  = "protocol"
 	columnKeyInfo      = "info"
 )
 
 type packetsTablemodel struct {
-	table       table.Model
-	cachedRows  []table.Row
-	packetsChan <-chan protocols.IPPacket
+	table      table.Model
+	cachedRows []table.Row
 }
 
 func newPacketsTable() packetsTablemodel {
@@ -27,6 +26,7 @@ func newPacketsTable() packetsTablemodel {
 	return packetsTablemodel{
 		cachedRows: rows,
 		table: table.New([]table.Column{
+			table.NewColumn(columnKeyInterface, "Date", 20),
 			table.NewColumn(columnKeyInterface, "Interface", 20),
 			table.NewColumn(columnKeyProtocol, "Protocol", 20),
 			table.NewColumn(columnKeyProtocol, "Info", 50),
