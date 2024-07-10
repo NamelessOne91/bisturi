@@ -1,35 +1,41 @@
 package tui
 
 import (
-	"strings"
+	"fmt"
+	"time"
 
+	"github.com/NamelessOne91/bisturi/sockets"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 )
 
 const (
-	columKeyDate       = "date"
-	columnKeyInterface = "interface"
-	columnKeyProtocol  = "protocol"
-	columnKeyInfo      = "info"
+	maxRows              = 40
+	columnKeyID          = "id"
+	columnKeyDate        = "date"
+	columnKeySource      = "source"
+	columnKeyDestination = "destination"
+	columnKeyInfo        = "info"
 )
 
 type packetsTablemodel struct {
 	table      table.Model
 	cachedRows []table.Row
+	counter    uint64
 }
 
 func newPacketsTable() packetsTablemodel {
-	rows := make([]table.Row, 0, 20)
+	rows := make([]table.Row, 0, maxRows)
 
 	return packetsTablemodel{
 		cachedRows: rows,
 		table: table.New([]table.Column{
-			table.NewColumn(columnKeyInterface, "Date", 20),
-			table.NewColumn(columnKeyInterface, "Interface", 20),
-			table.NewColumn(columnKeyProtocol, "Protocol", 20),
-			table.NewColumn(columnKeyProtocol, "Info", 50),
+			table.NewColumn(columnKeyID, "#", 5),
+			table.NewColumn(columnKeyDate, "Date", 20),
+			table.NewColumn(columnKeySource, "Source", 30),
+			table.NewColumn(columnKeyDestination, "Destination", 30),
+			table.NewColumn(columnKeyInfo, "Info", 100),
 		}).
 			WithRows(rows).
 			WithBaseStyle(lipgloss.NewStyle().
@@ -45,29 +51,40 @@ func (m packetsTablemodel) Init() tea.Cmd {
 }
 
 func (m packetsTablemodel) Update(msg tea.Msg) (packetsTablemodel, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
-	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
-
 	switch msg := msg.(type) {
+	case packetMsg:
+		m.addRow(msg)
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
-			cmds = append(cmds, tea.Quit)
+			return m, tea.Quit
 		}
 	}
 
-	return m, tea.Batch(cmds...)
+	var cmd tea.Cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
 }
 
 func (m packetsTablemodel) View() string {
-	sb := strings.Builder{}
+	return fmt.Sprintf("Displaying up to %d rows\n\n%s", maxRows, m.table.View())
+}
 
-	sb.WriteString(m.table.View())
+func (m *packetsTablemodel) addRow(data sockets.NetworkPacket) {
+	if len(m.cachedRows) >= maxRows {
+		m.cachedRows = m.cachedRows[1:]
+	}
+	m.counter += 1
 
-	return sb.String()
+	newRow := table.NewRow(table.RowData{
+		columnKeyID:          m.counter,
+		columnKeyDate:        time.Now().Local().Format(time.Stamp),
+		columnKeySource:      data.Source(),
+		columnKeyDestination: data.Destination(),
+		columnKeyInfo:        data.Info(),
+	})
+	m.cachedRows = append(m.cachedRows, newRow)
+	m.table = m.table.WithRows(m.cachedRows)
 }

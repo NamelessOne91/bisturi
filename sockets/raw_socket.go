@@ -2,7 +2,6 @@ package sockets
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"syscall"
@@ -72,7 +71,7 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 	for {
 		n, _, err := syscall.Recvfrom(rs.fd, buf, 0)
 		if err != nil {
-			log.Println("Error reading from socket:", err)
+			errChan <- fmt.Errorf("error reading from raw socket: %v", err)
 			continue
 		}
 

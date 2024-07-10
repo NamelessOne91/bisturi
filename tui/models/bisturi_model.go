@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/NamelessOne91/bisturi/sockets"
+	"github.com/NamelessOne91/bisturi/tui/styles"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,10 +18,13 @@ const (
 	retrieveIfaces step = iota
 	selectIface
 	selectProtocol
+	initPackets
 	receivePackets
 )
 
 type errMsg error
+
+type packetMsg sockets.NetworkPacket
 
 type bisturiModel struct {
 	step              step
@@ -31,6 +35,8 @@ type bisturiModel struct {
 	selectedProtocol  string
 	selectedEthType   uint16
 	rawSocket         *sockets.RawSocket
+	packetsChan       chan sockets.NetworkPacket
+	errChan           chan error
 	err               error
 }
 
@@ -54,11 +60,40 @@ func (m bisturiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLoading(msg)
 	case selectIface, selectProtocol:
 		return m.updateStartMenuSelection(msg)
+	case initPackets:
+		m.step = receivePackets
+		return m, m.waitForPacket()
 	case receivePackets:
 		return m.updateReceivingPacket(msg)
 	default:
 		return m, nil
 	}
+}
+
+func (m bisturiModel) View() string {
+	sb := strings.Builder{}
+
+	if m.err != nil {
+		sb.WriteString(fmt.Sprintf("Error: %s\n", m.err))
+		if m.rawSocket != nil {
+			if err := m.rawSocket.Close(); err != nil {
+				sb.WriteString(err.Error())
+			}
+		}
+	}
+
+	switch m.step {
+	case retrieveIfaces:
+		sb.WriteString(fmt.Sprintf("\n\nWelcome!\n\n %s Retrieving network interfaces...\n\n", m.spinner.View()))
+	case selectIface, selectProtocol:
+		sb.WriteString(m.startMenu.View())
+	case initPackets, receivePackets:
+		sb.WriteString(fmt.Sprintf("\n\nReceiving %s packets on %s ...\n\n", m.selectedProtocol, m.selectedInterface.Name))
+		sb.WriteString(m.packetsTable.View())
+	default:
+		sb.WriteString("The program is in an unknown state\nQuit with 'q'")
+	}
+	return styles.Default.Render(sb.String())
 }
 
 func (m *bisturiModel) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -107,7 +142,7 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 		if err != nil {
 			return m, tea.Quit
 		}
-		// bind the socket to the network interface
+
 		err = rs.Bind(m.selectedInterface)
 		if err != nil {
 			m.err = err
@@ -116,10 +151,16 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 		m.selectedProtocol = msg.name
 		m.selectedEthType = msg.ethType
 		m.rawSocket = rs
-		m.step = receivePackets
+		m.step = initPackets
 		m.packetsTable = newPacketsTable()
 
-		return m, nil
+		m.packetsChan = make(chan sockets.NetworkPacket)
+		m.errChan = make(chan error)
+
+		return m, func() tea.Msg {
+			go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
+			return nil
+		}
 	}
 	return m, cmd
 }
@@ -129,28 +170,20 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.packetsTable, cmd = m.packetsTable.Update(msg)
 
+	switch msg.(type) {
+	case sockets.NetworkPacket:
+		return m, m.waitForPacket()
+	}
 	return m, cmd
 }
 
-func (m bisturiModel) View() string {
-	if m.err != nil {
-		if m.rawSocket != nil {
-			m.rawSocket.Close()
+func (m bisturiModel) waitForPacket() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case packet := <-m.packetsChan:
+			return packetMsg(packet)
+		case err := <-m.errChan:
+			return errMsg(err)
 		}
-		return fmt.Sprintf("Error: %s\n", m.err)
 	}
-
-	sb := strings.Builder{}
-	switch m.step {
-	case retrieveIfaces:
-		sb.WriteString(fmt.Sprintf("\n\n %s Retrieving network interfaces...\n\n", m.spinner.View()))
-	case selectIface, selectProtocol:
-		sb.WriteString(m.startMenu.View())
-	case receivePackets:
-		sb.WriteString(fmt.Sprintf("Receiving %s packets on %s ...\n", m.selectedProtocol, m.selectedInterface.Name))
-		sb.WriteString(m.packetsTable.View())
-	default:
-		sb.WriteString("The program is in an unkowqn state\n")
-	}
-	return sb.String()
 }
