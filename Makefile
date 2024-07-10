@@ -8,6 +8,9 @@ build:
 run: build
 	@./bin/bisturi
 
+run-debug: build
+	@export BISTURI_DEBUG=y && ./bin/bisturi
+
 test:
 	@$$GO_EXECUTABLE_PATH test -v -race ./...
 
