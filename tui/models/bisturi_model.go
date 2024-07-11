@@ -151,6 +151,7 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 		// SYS_SOCKET syscall
 		rs, err := sockets.NewRawSocket(msg.name, msg.ethType)
 		if err != nil {
+			m.err = err
 			return m, tea.Quit
 		}
 
@@ -175,8 +176,11 @@ func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			return m, tea.Quit
+
+		case "enter":
 			maxRows, err := strconv.Atoi(m.rowsInput.Value())
 			if err == nil && maxRows > 0 {
 				m.packetsTable = newPacketsTable(maxRows)
