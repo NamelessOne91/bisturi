@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 
 	"github.com/NamelessOne91/bisturi/sockets"
 	"github.com/NamelessOne91/bisturi/tui/styles"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,7 +20,7 @@ const (
 	retrieveIfaces step = iota
 	selectIface
 	selectProtocol
-	initPackets
+	selectRows
 	receivePackets
 )
 
@@ -30,6 +32,7 @@ type bisturiModel struct {
 	step              step
 	spinner           spinner.Model
 	startMenu         startMenuModel
+	rowsInput         textinput.Model
 	packetsTable      packetsTablemodel
 	selectedInterface net.Interface
 	selectedProtocol  string
@@ -44,9 +47,16 @@ func NewBisturiModel() *bisturiModel {
 	s := spinner.New(spinner.WithSpinner(spinner.Meter))
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
 
+	ti := textinput.New()
+	ti.Placeholder = "Enter the max number of rows to display"
+	ti.Focus()
+	ti.CharLimit = 4
+	ti.Width = 50
+
 	return &bisturiModel{
-		step:    retrieveIfaces,
-		spinner: s,
+		step:      retrieveIfaces,
+		spinner:   s,
+		rowsInput: ti,
 	}
 }
 
@@ -60,9 +70,8 @@ func (m bisturiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLoading(msg)
 	case selectIface, selectProtocol:
 		return m.updateStartMenuSelection(msg)
-	case initPackets:
-		m.step = receivePackets
-		return m, m.waitForPacket()
+	case selectRows:
+		return m.updateRowsInput(msg)
 	case receivePackets:
 		return m.updateReceivingPacket(msg)
 	default:
@@ -87,7 +96,9 @@ func (m bisturiModel) View() string {
 		sb.WriteString(fmt.Sprintf("\n\nWelcome!\n\n %s Retrieving network interfaces...\n\n", m.spinner.View()))
 	case selectIface, selectProtocol:
 		sb.WriteString(m.startMenu.View())
-	case initPackets, receivePackets:
+	case selectRows:
+		sb.WriteString(m.rowsInput.View())
+	case receivePackets:
 		sb.WriteString(fmt.Sprintf("\n\nReceiving %s packets on %s ...\n\n", m.selectedProtocol, m.selectedInterface.Name))
 		sb.WriteString(m.packetsTable.View())
 	default:
@@ -151,17 +162,38 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 		m.selectedProtocol = msg.name
 		m.selectedEthType = msg.ethType
 		m.rawSocket = rs
-		m.step = initPackets
-		m.packetsTable = newPacketsTable()
+		m.step = selectRows
 
-		m.packetsChan = make(chan sockets.NetworkPacket)
-		m.errChan = make(chan error)
+		return m, nil
+	}
+	return m, cmd
+}
 
-		return m, func() tea.Msg {
-			go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
-			return nil
+func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.rowsInput, cmd = m.rowsInput.Update(msg)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			maxRows, err := strconv.Atoi(m.rowsInput.Value())
+			if err == nil && maxRows > 0 {
+				m.packetsTable = newPacketsTable(maxRows)
+
+				m.packetsChan = make(chan sockets.NetworkPacket)
+				m.errChan = make(chan error)
+
+				m.step = receivePackets
+
+				return m, tea.Batch(func() tea.Msg {
+					go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
+					return nil
+				}, m.waitForPacket)
+			}
 		}
 	}
+
 	return m, cmd
 }
 
@@ -172,18 +204,16 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg.(type) {
 	case sockets.NetworkPacket:
-		return m, m.waitForPacket()
+		return m, m.waitForPacket
 	}
 	return m, cmd
 }
 
-func (m bisturiModel) waitForPacket() tea.Cmd {
-	return func() tea.Msg {
-		select {
-		case packet := <-m.packetsChan:
-			return packetMsg(packet)
-		case err := <-m.errChan:
-			return errMsg(err)
-		}
+func (m bisturiModel) waitForPacket() tea.Msg {
+	select {
+	case packet := <-m.packetsChan:
+		return packetMsg(packet)
+	case err := <-m.errChan:
+		return errMsg(err)
 	}
 }

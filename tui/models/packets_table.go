@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	maxRows              = 40
 	columnKeyID          = "id"
 	columnKeyDate        = "date"
 	columnKeySource      = "source"
@@ -21,14 +20,16 @@ const (
 
 type packetsTablemodel struct {
 	table      table.Model
+	maxRows    int
 	cachedRows []table.Row
 	counter    uint64
 }
 
-func newPacketsTable() packetsTablemodel {
-	rows := make([]table.Row, 0, maxRows)
+func newPacketsTable(max int) packetsTablemodel {
+	rows := make([]table.Row, 0, max)
 
 	return packetsTablemodel{
+		maxRows:    max,
 		cachedRows: rows,
 		table: table.New([]table.Column{
 			table.NewColumn(columnKeyID, "#", 5),
@@ -69,11 +70,11 @@ func (m packetsTablemodel) Update(msg tea.Msg) (packetsTablemodel, tea.Cmd) {
 }
 
 func (m packetsTablemodel) View() string {
-	return fmt.Sprintf("Displaying up to %d rows\n\n%s", maxRows, m.table.View())
+	return fmt.Sprintf("Displaying up to the last %d rows\n\n%s", m.maxRows, m.table.View())
 }
 
 func (m *packetsTablemodel) addRow(data sockets.NetworkPacket) {
-	if len(m.cachedRows) >= maxRows {
+	if len(m.cachedRows) >= m.maxRows {
 		m.cachedRows = m.cachedRows[1:]
 	}
 	m.counter += 1
