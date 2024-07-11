@@ -4,7 +4,6 @@ import (
 	"net"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type startMenuModel struct {
@@ -79,7 +78,7 @@ func (m startMenuModel) View() string {
 	case selectProtocol:
 		s = m.protoList.l.View()
 	default:
-		return "Unkown step"
+		s = "Unkown step"
 	}
-	return lipgloss.NewStyle().Padding(1).Render(s)
+	return s
 }

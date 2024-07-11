@@ -2,6 +2,7 @@ package tui
 
 import (
 	"net"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -85,6 +86,7 @@ func fetchInterfaces() tea.Cmd {
 		if err != nil {
 			return errMsg(err)
 		}
+		time.Sleep(2 * time.Second)
 		return networkInterfacesMsg(ifaces)
 	}
 }
