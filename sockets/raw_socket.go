@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/NamelessOne91/bisturi/protocols"
@@ -36,11 +37,17 @@ type RawSocket struct {
 // NewRawSocket opens a raw socket for the specified protocol by calling SYS_SOCKET
 // and returns the struct representing it, or eventual errors
 func NewRawSocket(protocol string, ethType uint16) (*RawSocket, error) {
+	filter := "all"
+	if strings.HasPrefix(protocol, "udp") {
+		filter = "udp"
+	} else if strings.HasPrefix(protocol, "tcp") {
+		filter = "tcp"
+	}
 
 	rawSocket := &RawSocket{
 		shutdownChan: make(chan os.Signal, 1),
 		ethType:      ethType,
-		layer4Filter: protocol,
+		layer4Filter: filter,
 	}
 	// AF_PACKET specifies a packet socket, operating at the data link layer (Layer 2)
 	// SOCK_RAW specifies a raw socket
@@ -76,31 +83,18 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 		}
 
 		switch rs.ethType {
-		case syscall.ETH_P_IP:
-			fallthrough
-		case syscall.ETH_P_IPV6:
+		case syscall.ETH_P_ARP:
+			// TODO: ARP parsing
+		case syscall.ETH_P_IP, syscall.ETH_P_IPV6:
 			packet, err := protocols.IPPacketFromBytes(buf[:n])
 			if err != nil {
 				errChan <- fmt.Errorf("error reading IP packet: %v", err)
 				continue
 			}
-
+			// IPv4 VS IPv6 packets filtering should be handled by the socket itself
 			l4Protocol := packet.Header().TransportLayerProtocol()
-			switch l4Protocol {
-			case "udp":
-				packet, err := protocols.UDPPacketFromIPPacket(packet)
-				if err != nil {
-					errChan <- fmt.Errorf("error reading UDP packet: %v", err)
-					continue
-				}
-				dataChan <- packet
-			case "tcp":
-				packet, err := protocols.TCPPacketFromIPPacket(packet)
-				if err != nil {
-					errChan <- fmt.Errorf("error reading TCP packet: %v", err)
-					continue
-				}
-				dataChan <- packet
+			if rs.layer4Filter == "all" || (l4Protocol == rs.layer4Filter) {
+				handleLayer4Protocol(l4Protocol, packet, dataChan, errChan)
 			}
 		}
 	}
@@ -109,4 +103,22 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 // Close closes the raw socket by calling SYS_CLOSE on its file descriptor
 func (rs *RawSocket) Close() error {
 	return syscall.Close(rs.fd)
+}
+
+func handleLayer4Protocol(protocol string, packet protocols.IPPacket, dataChan chan<- NetworkPacket, errChan chan<- error) {
+	var np NetworkPacket
+	var err error
+
+	switch protocol {
+	case "udp":
+		np, err = protocols.UDPPacketFromIPPacket(packet)
+	case "tcp":
+		np, err = protocols.TCPPacketFromIPPacket(packet)
+	}
+
+	if err != nil {
+		errChan <- fmt.Errorf("error reading %s packet: %v", protocol, err)
+		return
+	}
+	dataChan <- np
 }

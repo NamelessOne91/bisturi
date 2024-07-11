@@ -33,9 +33,9 @@ func newPacketsTable(max int) packetsTablemodel {
 		cachedRows: rows,
 		table: table.New([]table.Column{
 			table.NewColumn(columnKeyID, "#", 5),
-			table.NewColumn(columnKeyDate, "Date", 20),
-			table.NewColumn(columnKeySource, "Source", 30),
-			table.NewColumn(columnKeyDestination, "Destination", 30),
+			table.NewColumn(columnKeyDate, "Date", 18),
+			table.NewColumn(columnKeySource, "Source", 50),
+			table.NewColumn(columnKeyDestination, "Destination", 50),
 			table.NewColumn(columnKeyInfo, "Info", 100),
 		}).
 			WithRows(rows).
