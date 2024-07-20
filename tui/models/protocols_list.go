@@ -27,6 +27,42 @@ type protocolsListModel struct {
 	l list.Model
 }
 
+func newProtocolsListModel(terminalHeight, terminalWidth int) protocolsListModel {
+	listHeight := (75 * terminalHeight) / 100
+	listWidth := (75 * terminalWidth) / 100
+
+	protoDelegate := list.NewDefaultDelegate()
+	protoDelegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
+
+	items := []list.Item{
+		protoItem{name: "all", ethType: syscall.ETH_P_ALL},
+		protoItem{name: "arp", ethType: syscall.ETH_P_ARP},
+		protoItem{name: "ip", ethType: syscall.ETH_P_IP},
+		protoItem{name: "ipv6", ethType: syscall.ETH_P_IPV6},
+		// UDP and TCP are part of IP, need special handling if filtered specifically
+		protoItem{name: "udp", ethType: syscall.ETH_P_IP},
+		protoItem{name: "udp6", ethType: syscall.ETH_P_IPV6},
+		protoItem{name: "tcp", ethType: syscall.ETH_P_IP},
+		protoItem{name: "tcp6", ethType: syscall.ETH_P_IPV6},
+	}
+	protoList := list.New(items, protoDelegate, listWidth, listHeight)
+	protoList.Title = "Select a Network Protocol"
+	protoList.Styles.Title = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99")).Blink(true).Bold(true)
+	protoList.SetShowStatusBar(false)
+	protoList.SetFilteringEnabled(false)
+	protoList.SetShowHelp(true)
+
+	return protocolsListModel{l: protoList}
+}
+
+func (m *protocolsListModel) resize(terminalHeight, terminalWidth int) {
+	listHeight := (75 * terminalHeight) / 100
+	listWidth := (75 * terminalWidth) / 100
+
+	m.l.SetHeight(listHeight)
+	m.l.SetWidth(listWidth)
+}
+
 func (m protocolsListModel) Init() tea.Cmd {
 	return nil
 }
@@ -53,29 +89,4 @@ func (m protocolsListModel) Update(msg tea.Msg) (protocolsListModel, tea.Cmd) {
 
 func (m protocolsListModel) View() string {
 	return m.l.View()
-}
-
-func newProtocolsListModel(width, height int) protocolsListModel {
-	protoDelegate := list.NewDefaultDelegate()
-	protoDelegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
-
-	items := []list.Item{
-		protoItem{name: "all", ethType: syscall.ETH_P_ALL},
-		protoItem{name: "arp", ethType: syscall.ETH_P_ARP},
-		protoItem{name: "ip", ethType: syscall.ETH_P_IP},
-		protoItem{name: "ipv6", ethType: syscall.ETH_P_IPV6},
-		// UDP and TCP are part of IP, need special handling if filtered specifically
-		protoItem{name: "udp", ethType: syscall.ETH_P_IP},
-		protoItem{name: "udp6", ethType: syscall.ETH_P_IPV6},
-		protoItem{name: "tcp", ethType: syscall.ETH_P_IP},
-		protoItem{name: "tcp6", ethType: syscall.ETH_P_IPV6},
-	}
-	protoList := list.New(items, protoDelegate, width, height)
-	protoList.Title = "Select a Network Protocol"
-	protoList.Styles.Title = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99")).Blink(true).Bold(true)
-	protoList.SetShowStatusBar(false)
-	protoList.SetFilteringEnabled(false)
-	protoList.SetShowHelp(true)
-
-	return protocolsListModel{l: protoList}
 }

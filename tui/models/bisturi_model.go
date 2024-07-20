@@ -29,6 +29,8 @@ type errMsg error
 type packetMsg sockets.NetworkPacket
 
 type bisturiModel struct {
+	terminalHeight    int
+	terminalWidth     int
 	step              step
 	spinner           spinner.Model
 	startMenu         startMenuModel
@@ -43,20 +45,23 @@ type bisturiModel struct {
 	err               error
 }
 
-func NewBisturiModel() *bisturiModel {
-	s := spinner.New(spinner.WithSpinner(spinner.Meter))
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
-
+func newRowsInput(terminalWidth int) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter the max number of rows to display"
 	ti.Focus()
 	ti.CharLimit = 4
-	ti.Width = 50
+	ti.Width = terminalWidth / 2
+
+	return ti
+}
+
+func NewBisturiModel() *bisturiModel {
+	s := spinner.New(spinner.WithSpinner(spinner.Meter))
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
 
 	return &bisturiModel{
-		step:      retrieveIfaces,
-		spinner:   s,
-		rowsInput: ti,
+		step:    retrieveIfaces,
+		spinner: s,
 	}
 }
 
@@ -93,7 +98,7 @@ func (m bisturiModel) View() string {
 
 	switch m.step {
 	case retrieveIfaces:
-		sb.WriteString(fmt.Sprintf("\n\nWelcome!\n\n %s Retrieving network interfaces...\n\n", m.spinner.View()))
+		sb.WriteString(fmt.Sprintf("\n\nWelcome!\n\nRetrieving network interfaces \n\n%s", m.spinner.View()))
 	case selectIface, selectProtocol:
 		sb.WriteString(m.startMenu.View())
 	case selectRows:
@@ -113,8 +118,14 @@ func (m *bisturiModel) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, tea.Quit
 
+	case tea.WindowSizeMsg:
+		m.terminalHeight = msg.Height
+		m.terminalWidth = msg.Width
+
+		return m, nil
+
 	case networkInterfacesMsg:
-		m.startMenu = newStartMenuModel(msg)
+		m.startMenu = newStartMenuModel(msg, m.terminalHeight, m.terminalWidth)
 		m.step = selectIface
 
 		return m, nil
@@ -136,6 +147,17 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 	m.startMenu, cmd = m.startMenu.Update(msg)
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.terminalHeight = msg.Height
+		m.terminalWidth = msg.Height
+		if m.step == selectIface {
+			m.startMenu.ifaceList.resize(m.terminalHeight, m.terminalWidth)
+		} else if m.step == selectProtocol {
+			m.startMenu.protoList.resize(m.terminalHeight, m.terminalWidth)
+		}
+
+		return m, nil
+
 	case selectedIfaceItemMsg:
 		iface, err := net.InterfaceByName(msg.name)
 		if err != nil {
@@ -165,6 +187,7 @@ func (m *bisturiModel) updateStartMenuSelection(msg tea.Msg) (tea.Model, tea.Cmd
 		m.rawSocket = rs
 		m.step = selectRows
 
+		m.rowsInput = newRowsInput(m.terminalWidth)
 		return m, nil
 	}
 	return m, cmd
@@ -175,6 +198,12 @@ func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.rowsInput, cmd = m.rowsInput.Update(msg)
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.terminalHeight = msg.Height
+		m.terminalWidth = msg.Width
+
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
@@ -183,7 +212,7 @@ func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			maxRows, err := strconv.Atoi(m.rowsInput.Value())
 			if err == nil && maxRows > 0 {
-				m.packetsTable = newPacketsTable(maxRows)
+				m.packetsTable = newPacketsTable(maxRows, m.terminalWidth)
 
 				m.packetsChan = make(chan sockets.NetworkPacket)
 				m.errChan = make(chan error)
@@ -206,7 +235,14 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.packetsTable, cmd = m.packetsTable.Update(msg)
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.terminalHeight = msg.Height
+		m.terminalWidth = msg.Width
+		m.packetsTable.resizeTable(m.terminalWidth)
+
+		return m, nil
+
 	case sockets.NetworkPacket:
 		return m, m.waitForPacket
 	}

@@ -21,12 +21,9 @@ type selectedProtocolMsg struct {
 	ethTytpe uint16
 }
 
-func newStartMenuModel(interfaces []net.Interface) startMenuModel {
-	const listHeight = 50
-	const listWidth = 50
-
-	il := newInterfacesListModel(listWidth, listHeight, interfaces)
-	plm := newProtocolsListModel(listWidth, listHeight)
+func newStartMenuModel(interfaces []net.Interface, terminalHeight, terminalWidth int) startMenuModel {
+	il := newInterfacesListModel(interfaces, terminalHeight, terminalWidth)
+	plm := newProtocolsListModel(terminalHeight, terminalWidth)
 
 	return startMenuModel{
 		step:      selectIface,

@@ -25,26 +25,34 @@ type packetsTablemodel struct {
 	counter    uint64
 }
 
-func newPacketsTable(max int) packetsTablemodel {
+func buildTable(rows []table.Row, terminalWidth int) table.Model {
+	return table.New([]table.Column{
+		table.NewColumn(columnKeyID, "#", (2*terminalWidth)/100),
+		table.NewColumn(columnKeyDate, "Date", (8*terminalWidth)/100),
+		table.NewColumn(columnKeySource, "Source", (20*terminalWidth)/100),
+		table.NewColumn(columnKeyDestination, "Destination", (20*terminalWidth)/100),
+		table.NewColumn(columnKeyInfo, "Info", (46*terminalWidth)/100),
+	}).
+		WithRows(rows).
+		WithBaseStyle(lipgloss.NewStyle().
+			BorderForeground(lipgloss.Color("#00cc99")).
+			Foreground(lipgloss.Color("#00cc99")).
+			Align(lipgloss.Center),
+		)
+}
+
+func newPacketsTable(max int, terminalWidth int) packetsTablemodel {
 	rows := make([]table.Row, 0, max)
 
 	return packetsTablemodel{
 		maxRows:    max,
 		cachedRows: rows,
-		table: table.New([]table.Column{
-			table.NewColumn(columnKeyID, "#", 5),
-			table.NewColumn(columnKeyDate, "Date", 18),
-			table.NewColumn(columnKeySource, "Source", 50),
-			table.NewColumn(columnKeyDestination, "Destination", 50),
-			table.NewColumn(columnKeyInfo, "Info", 100),
-		}).
-			WithRows(rows).
-			WithBaseStyle(lipgloss.NewStyle().
-				BorderForeground(lipgloss.Color("#00cc99")).
-				Foreground(lipgloss.Color("#00cc99")).
-				Align(lipgloss.Center),
-			),
+		table:      buildTable(rows, terminalWidth),
 	}
+}
+
+func (m *packetsTablemodel) resizeTable(terminalWidth int) {
+	m.table = buildTable(m.cachedRows, terminalWidth)
 }
 
 func (m packetsTablemodel) Init() tea.Cmd {

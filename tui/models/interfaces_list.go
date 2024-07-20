@@ -29,6 +29,40 @@ type interfacesListModel struct {
 	l list.Model
 }
 
+func newInterfacesListModel(interfaces []net.Interface, terminalHeight, terminalWidth int) interfacesListModel {
+	listHeight := (75 * terminalHeight) / 100
+	listWidth := (75 * terminalWidth) / 100
+
+	items := make([]list.Item, len(interfaces))
+	for i, iface := range interfaces {
+		items[i] = ifaceItem{
+			name:  iface.Name,
+			flags: iface.Flags.String(),
+		}
+	}
+
+	titlesStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99")).Blink(true).Bold(true)
+	ifaceDelegate := list.NewDefaultDelegate()
+	ifaceDelegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
+
+	ifaceList := list.New(items, ifaceDelegate, listWidth, listHeight)
+	ifaceList.Title = "Select a Network Interface"
+	ifaceList.Styles.Title = titlesStyle
+	ifaceList.SetShowStatusBar(true)
+	ifaceList.SetFilteringEnabled(false)
+	ifaceList.SetShowHelp(true)
+
+	return interfacesListModel{l: ifaceList}
+}
+
+func (m *interfacesListModel) resize(terminalHeight, terminalWidth int) {
+	listHeight := (75 * terminalHeight) / 100
+	listWidth := (75 * terminalWidth) / 100
+
+	m.l.SetHeight(listHeight)
+	m.l.SetWidth(listWidth)
+}
+
 func (m interfacesListModel) Init() tea.Cmd {
 	return nil
 }
@@ -55,29 +89,6 @@ func (m interfacesListModel) Update(msg tea.Msg) (interfacesListModel, tea.Cmd) 
 
 func (m interfacesListModel) View() string {
 	return m.l.View()
-}
-
-func newInterfacesListModel(width, height int, interfaces []net.Interface) interfacesListModel {
-	items := make([]list.Item, len(interfaces))
-	for i, iface := range interfaces {
-		items[i] = ifaceItem{
-			name:  iface.Name,
-			flags: iface.Flags.String(),
-		}
-	}
-
-	titlesStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99")).Blink(true).Bold(true)
-	ifaceDelegate := list.NewDefaultDelegate()
-	ifaceDelegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
-
-	ifaceList := list.New(items, ifaceDelegate, width, height)
-	ifaceList.Title = "Select a Network Interface"
-	ifaceList.Styles.Title = titlesStyle
-	ifaceList.SetShowStatusBar(true)
-	ifaceList.SetFilteringEnabled(false)
-	ifaceList.SetShowHelp(true)
-
-	return interfacesListModel{l: ifaceList}
 }
 
 func fetchInterfaces() tea.Cmd {
