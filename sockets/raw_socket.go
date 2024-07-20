@@ -3,7 +3,6 @@ package sockets
 import (
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"syscall"
 
@@ -27,7 +26,6 @@ type NetworkPacket interface {
 // RawSocket represents a raw socket and stores info about its file descriptor,
 // Ethernet protocol type and Link Layer info
 type RawSocket struct {
-	shutdownChan chan os.Signal
 	fd           int
 	ethType      uint16
 	layer4Filter string
@@ -45,7 +43,6 @@ func NewRawSocket(protocol string, ethType uint16) (*RawSocket, error) {
 	}
 
 	rawSocket := &RawSocket{
-		shutdownChan: make(chan os.Signal, 1),
 		ethType:      ethType,
 		layer4Filter: filter,
 	}
@@ -83,19 +80,23 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 		}
 
 		switch rs.ethType {
+		case syscall.ETH_P_ALL:
+			ethFrame, err := protocols.EthFrameFromBytes(buf[:n])
+			if err != nil {
+				errChan <- fmt.Errorf("failed to read ETH frame: %v", err)
+				continue
+			}
+
+			switch ethFrame.EtherType() {
+			case "ARP":
+				// TODO: ARP parsing
+			case "IPv4", "IPv6":
+				handleIPPacket(buf[:n], rs.layer4Filter, dataChan, errChan)
+			}
 		case syscall.ETH_P_ARP:
 			// TODO: ARP parsing
 		case syscall.ETH_P_IP, syscall.ETH_P_IPV6:
-			packet, err := protocols.IPPacketFromBytes(buf[:n])
-			if err != nil {
-				errChan <- fmt.Errorf("error reading IP packet: %v", err)
-				continue
-			}
-			// IPv4 VS IPv6 packets filtering should be handled by the socket itself
-			l4Protocol := packet.Header().TransportLayerProtocol()
-			if rs.layer4Filter == "all" || (l4Protocol == rs.layer4Filter) {
-				handleLayer4Protocol(l4Protocol, packet, dataChan, errChan)
-			}
+			handleIPPacket(buf[:n], rs.layer4Filter, dataChan, errChan)
 		}
 	}
 }
@@ -103,6 +104,19 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 // Close closes the raw socket by calling SYS_CLOSE on its file descriptor
 func (rs *RawSocket) Close() error {
 	return syscall.Close(rs.fd)
+}
+
+func handleIPPacket(raw []byte, filter string, dataChan chan<- NetworkPacket, errChan chan<- error) {
+	packet, err := protocols.IPPacketFromBytes(raw)
+	if err != nil {
+		errChan <- fmt.Errorf("error reading IP packet: %v", err)
+		return
+	}
+	// IPv4 VS IPv6 packets filtering should be handled by the socket itself
+	l4Protocol := packet.Header().TransportLayerProtocol()
+	if filter == "all" || (l4Protocol == filter) {
+		handleLayer4Protocol(l4Protocol, packet, dataChan, errChan)
+	}
 }
 
 func handleLayer4Protocol(protocol string, packet protocols.IPPacket, dataChan chan<- NetworkPacket, errChan chan<- error) {
