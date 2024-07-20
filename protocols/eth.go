@@ -41,9 +41,11 @@ func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
 	}, nil
 }
 
-// Info returns an human-readable string containing all the ETH frame data
-func (f *EthernetFrame) Info() string {
-	etv := etherTypesValues[f.etherType]
+func (f EthernetFrame) EtherType() string {
+	return etherTypesValues[f.etherType]
+}
 
-	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", etv, f.sourceMAC, f.destinationMAC)
+// Info returns an human-readable string containing all the ETH frame data
+func (f EthernetFrame) Info() string {
+	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", f.EtherType(), f.sourceMAC, f.destinationMAC)
 }
