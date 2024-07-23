@@ -12,6 +12,7 @@ var EtherTypesValues = map[uint16]string{
 	0x0800: "IPv4",
 	0x0806: "ARP",
 	0x0842: "Wake-on-LAN",
+	0x8535: "RARP",
 	0x86DD: "IPv6",
 	0x8808: "Ethernet flow control",
 }

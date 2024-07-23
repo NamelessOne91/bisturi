@@ -89,12 +89,12 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 
 			switch ethFrame.Type() {
 			case "ARP":
-				// TODO: ARP parsing
+				handleARPPacket(buf[:n], dataChan, errChan)
 			case "IPv4", "IPv6":
 				handleIPPacket(buf[:n], rs.layer4Filter, dataChan, errChan)
 			}
 		case syscall.ETH_P_ARP:
-			// TODO: ARP parsing
+			handleARPPacket(buf[:n], dataChan, errChan)
 		case syscall.ETH_P_IP, syscall.ETH_P_IPV6:
 			handleIPPacket(buf[:n], rs.layer4Filter, dataChan, errChan)
 		}
@@ -104,6 +104,17 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 // Close closes the raw socket by calling SYS_CLOSE on its file descriptor
 func (rs *RawSocket) Close() error {
 	return syscall.Close(rs.fd)
+}
+
+// handleARPPacket parses the provided bytes to an ARP packet's data and sends its representation, or
+// an error, to the provided channels.
+func handleARPPacket(raw []byte, dataChan chan<- NetworkPacket, errChan chan<- error) {
+	packet, err := protocols.ARPPacketFromBytes(raw)
+	if err != nil {
+		errChan <- err
+		return
+	}
+	dataChan <- packet
 }
 
 // handleIPPacket parses the provided bytes to an Ipv4 or Ipv6 packet's data and sends its representation, or
