@@ -36,7 +36,7 @@ func TestUDPPacketFromIPPacket(t *testing.T) {
 				payload: []byte{0x1f, 0x90, 0x23},
 			},
 			expectedUDPPacket: nil,
-			expectedErr:       errInvalidUDPHeader,
+			expectedErr:       ErrInvalidUDPHeader,
 		},
 		{
 			name: "Valid IPv6 packet with UDP payload",
@@ -111,7 +111,7 @@ func TestUDPHeaderFromBytes(t *testing.T) {
 			name:           "Too short Header",
 			raw:            []byte{0x1f, 0x90, 0x23},
 			expectedHeader: nil,
-			expectedErr:    errInvalidUDPHeader,
+			expectedErr:    ErrInvalidUDPHeader,
 		},
 		{
 			name: "Minimum valid Header",

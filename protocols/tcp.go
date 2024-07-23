@@ -25,8 +25,8 @@ type TCPHeader struct {
 }
 
 var (
-	errTCPHeaderTooShort    = errors.New("TCP header must be at least 20 bytes")
-	errTCPHeaderLenMismatch = errors.New("TCP header length less than raw Offset")
+	ErrTCPHeaderTooShort    = errors.New("TCP header must be at least 20 bytes")
+	ErrTCPHeaderLenMismatch = errors.New("TCP header length less than raw Offset")
 )
 
 func TCPPacketFromIPPacket(ip IPPacket) (*TCPPacket, error) {
@@ -40,13 +40,13 @@ func TCPPacketFromIPPacket(ip IPPacket) (*TCPPacket, error) {
 
 func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
 	if len(raw) < 20 {
-		return nil, errTCPHeaderTooShort
+		return nil, ErrTCPHeaderTooShort
 	}
 
 	offset := raw[12] >> 4
 	hLen := int(offset) * 4
 	if len(raw) < hLen {
-		return nil, errTCPHeaderLenMismatch
+		return nil, ErrTCPHeaderLenMismatch
 	}
 
 	return &TCPHeader{

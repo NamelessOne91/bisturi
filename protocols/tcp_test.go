@@ -143,7 +143,7 @@ func TestTCPHeaderFromBytes(t *testing.T) {
 			name:           "Invalid TCP Header (too short)",
 			raw:            []byte{0x00, 0x50},
 			expectedHeader: nil,
-			expectedErr:    errTCPHeaderTooShort,
+			expectedErr:    ErrTCPHeaderTooShort,
 		},
 		{
 			name: "Valid TCP Header with minimum length",
@@ -172,7 +172,7 @@ func TestTCPHeaderFromBytes(t *testing.T) {
 				0x80, 0x02, 0x20, 0x00, 0xe0, 0x57, 0x00, 0x00,
 			},
 			expectedHeader: nil,
-			expectedErr:    errTCPHeaderLenMismatch,
+			expectedErr:    ErrTCPHeaderLenMismatch,
 		},
 	}
 

@@ -18,7 +18,7 @@ type UDPHeader struct {
 	Checksum        uint16
 }
 
-var errInvalidUDPHeader = errors.New("UDP header must be 8 bytes")
+var ErrInvalidUDPHeader = errors.New("UDP header must be 8 bytes")
 
 // UDPPacketFromIPPacket parses the passed IPv4 or IPv6 packet's data returning a struct conatining the encapsulated UDP's packet data.
 // An error is returned if the headers' constraints are not respected.
@@ -53,7 +53,7 @@ func (p UDPPacket) Destination() string {
 // It expects an array of at least 8 bytes
 func UDPHeaderFromBytes(raw []byte) (*UDPHeader, error) {
 	if len(raw) < 8 {
-		return nil, errInvalidUDPHeader
+		return nil, ErrInvalidUDPHeader
 	}
 
 	return &UDPHeader{
