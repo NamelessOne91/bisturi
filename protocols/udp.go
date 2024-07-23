@@ -7,15 +7,15 @@ import (
 )
 
 type UDPPacket struct {
-	ipPacket IPPacket
-	header   udpHeader
+	IPPacket IPPacket
+	Header   UDPHeader
 }
 
-type udpHeader struct {
-	sourcePort      uint16
-	destinationPort uint16
-	length          uint16
-	checksum        uint16
+type UDPHeader struct {
+	SourcePort      uint16
+	DestinationPort uint16
+	Length          uint16
+	Checksum        uint16
 }
 
 var errInvalidUDPHeader = errors.New("UDP header must be 8 bytes")
@@ -23,43 +23,43 @@ var errInvalidUDPHeader = errors.New("UDP header must be 8 bytes")
 // UDPPacketFromIPPacket parses the passed IPv4 or IPv6 packet's data returning a struct conatining the encapsulated UDP's packet data.
 // An error is returned if the headers' constraints are not respected.
 func UDPPacketFromIPPacket(ip IPPacket) (*UDPPacket, error) {
-	udpHeader, err := udpHeaderFromBytes(ip.Payload())
+	UDPHeader, err := UDPHeaderFromBytes(ip.Payload())
 	if err != nil {
 		return nil, err
 	}
 
 	return &UDPPacket{
-		ipPacket: ip,
-		header:   *udpHeader,
+		IPPacket: ip,
+		Header:   *UDPHeader,
 	}, nil
 }
 
 // Info return an human-readable string containing the main UDP packet data
 func (p UDPPacket) Info() string {
 	return fmt.Sprintf("%s - port %d to port %d",
-		p.ipPacket.Info(), p.header.sourcePort, p.header.destinationPort,
+		p.IPPacket.Info(), p.Header.SourcePort, p.Header.DestinationPort,
 	)
 }
 
 func (p UDPPacket) Source() string {
-	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Source(), p.header.sourcePort)
+	return fmt.Sprintf("%s:%d", p.IPPacket.Header().Source(), p.Header.SourcePort)
 }
 
 func (p UDPPacket) Destination() string {
-	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Destination(), p.header.destinationPort)
+	return fmt.Sprintf("%s:%d", p.IPPacket.Header().Destination(), p.Header.DestinationPort)
 }
 
-// udpHeaderFromBytes parses the passed bytes to a struct containing the UDP header data and returns a pointer to it.
+// UDPHeaderFromBytes parses the passed bytes to a struct containing the UDP header data and returns a pointer to it.
 // It expects an array of at least 8 bytes
-func udpHeaderFromBytes(raw []byte) (*udpHeader, error) {
+func UDPHeaderFromBytes(raw []byte) (*UDPHeader, error) {
 	if len(raw) < 8 {
 		return nil, errInvalidUDPHeader
 	}
 
-	return &udpHeader{
-		sourcePort:      binary.BigEndian.Uint16(raw[0:2]),
-		destinationPort: binary.BigEndian.Uint16(raw[2:4]),
-		length:          binary.BigEndian.Uint16(raw[4:6]),
-		checksum:        binary.BigEndian.Uint16(raw[6:8]),
+	return &UDPHeader{
+		SourcePort:      binary.BigEndian.Uint16(raw[0:2]),
+		DestinationPort: binary.BigEndian.Uint16(raw[2:4]),
+		Length:          binary.BigEndian.Uint16(raw[4:6]),
+		Checksum:        binary.BigEndian.Uint16(raw[6:8]),
 	}, nil
 }

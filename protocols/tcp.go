@@ -7,21 +7,21 @@ import (
 )
 
 type TCPPacket struct {
-	ipPacket IPPacket
-	header   tcpHeader
+	IPPacket IPPacket
+	Header   TCPHeader
 }
 
-type tcpHeader struct {
-	sourcePort      uint16
-	destinationPort uint16
-	sequenceNumber  uint32
-	ackNumber       uint32
-	rawOffset       uint8 // rawOffset is in 4-byte words
-	flags           uint8
-	windowSize      uint16
-	checksum        uint16
-	urgentPointer   uint16
-	options         []byte
+type TCPHeader struct {
+	SourcePort      uint16
+	DestinationPort uint16
+	SequenceNumber  uint32
+	AckNumber       uint32
+	RawOffset       uint8 // rawOffset is in 4-byte words
+	Flags           uint8
+	WindowSize      uint16
+	Checksum        uint16
+	UrgentPointer   uint16
+	Options         []byte
 }
 
 var (
@@ -30,15 +30,15 @@ var (
 )
 
 func TCPPacketFromIPPacket(ip IPPacket) (*TCPPacket, error) {
-	tcpHeader, err := tcpHeaderFromBytes(ip.Payload())
+	TCPHeader, err := TCPHeaderFromBytes(ip.Payload())
 
 	return &TCPPacket{
-		ipPacket: ip,
-		header:   *tcpHeader,
+		IPPacket: ip,
+		Header:   *TCPHeader,
 	}, err
 }
 
-func tcpHeaderFromBytes(raw []byte) (*tcpHeader, error) {
+func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
 	if len(raw) < 20 {
 		return nil, errTCPHeaderTooShort
 	}
@@ -49,31 +49,31 @@ func tcpHeaderFromBytes(raw []byte) (*tcpHeader, error) {
 		return nil, errTCPHeaderLenMismatch
 	}
 
-	return &tcpHeader{
-		sourcePort:      binary.BigEndian.Uint16(raw[0:2]),
-		destinationPort: binary.BigEndian.Uint16(raw[2:4]),
-		sequenceNumber:  binary.BigEndian.Uint32(raw[4:8]),
-		ackNumber:       binary.BigEndian.Uint32(raw[8:12]),
-		rawOffset:       offset,
-		flags:           raw[13],
-		windowSize:      binary.BigEndian.Uint16(raw[14:16]),
-		checksum:        binary.BigEndian.Uint16(raw[16:18]),
-		urgentPointer:   binary.BigEndian.Uint16(raw[18:20]),
-		options:         raw[20:hLen],
+	return &TCPHeader{
+		SourcePort:      binary.BigEndian.Uint16(raw[0:2]),
+		DestinationPort: binary.BigEndian.Uint16(raw[2:4]),
+		SequenceNumber:  binary.BigEndian.Uint32(raw[4:8]),
+		AckNumber:       binary.BigEndian.Uint32(raw[8:12]),
+		RawOffset:       offset,
+		Flags:           raw[13],
+		WindowSize:      binary.BigEndian.Uint16(raw[14:16]),
+		Checksum:        binary.BigEndian.Uint16(raw[16:18]),
+		UrgentPointer:   binary.BigEndian.Uint16(raw[18:20]),
+		Options:         raw[20:hLen],
 	}, nil
 }
 
 // Info return an human-readable string containing the main TCP packet data
 func (p TCPPacket) Info() string {
 	return fmt.Sprintf("%s - port %d to port %d",
-		p.ipPacket.Info(), p.header.sourcePort, p.header.destinationPort,
+		p.IPPacket.Info(), p.Header.SourcePort, p.Header.DestinationPort,
 	)
 }
 
 func (p TCPPacket) Source() string {
-	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Source(), p.header.sourcePort)
+	return fmt.Sprintf("%s:%d", p.IPPacket.Header().Source(), p.Header.SourcePort)
 }
 
 func (p TCPPacket) Destination() string {
-	return fmt.Sprintf("%s:%d", p.ipPacket.Header().Destination(), p.header.destinationPort)
+	return fmt.Sprintf("%s:%d", p.IPPacket.Header().Destination(), p.Header.DestinationPort)
 }
