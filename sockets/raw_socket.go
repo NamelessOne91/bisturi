@@ -106,10 +106,12 @@ func (rs *RawSocket) Close() error {
 	return syscall.Close(rs.fd)
 }
 
+// handleIPPacket parses the provided bytes to an Ipv4 or Ipv6 packet's data and sends its representation, or
+// an error, to the provided channels. It is possible to apply a layer 4 filter to the packets.
 func handleIPPacket(raw []byte, filter string, dataChan chan<- NetworkPacket, errChan chan<- error) {
 	packet, err := protocols.IPPacketFromBytes(raw)
 	if err != nil {
-		errChan <- fmt.Errorf("error reading IP packet: %v", err)
+		errChan <- err
 		return
 	}
 	// IPv4 VS IPv6 packets filtering should be handled by the socket itself
@@ -119,6 +121,8 @@ func handleIPPacket(raw []byte, filter string, dataChan chan<- NetworkPacket, er
 	}
 }
 
+// handleLayer4Protocol obtains UDP or TCP data for the provided IPPacket, based on the given protocol filter.
+// The representation, or an error, is sent to the provided channel.
 func handleLayer4Protocol(protocol string, packet protocols.IPPacket, dataChan chan<- NetworkPacket, errChan chan<- error) {
 	var np NetworkPacket
 	var err error
@@ -131,7 +135,7 @@ func handleLayer4Protocol(protocol string, packet protocols.IPPacket, dataChan c
 	}
 
 	if err != nil {
-		errChan <- fmt.Errorf("error reading %s packet: %v", protocol, err)
+		errChan <- err
 		return
 	}
 	dataChan <- np
