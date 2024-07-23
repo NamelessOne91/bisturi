@@ -31,11 +31,14 @@ var (
 
 func TCPPacketFromIPPacket(ip IPPacket) (*TCPPacket, error) {
 	TCPHeader, err := TCPHeaderFromBytes(ip.Payload())
+	if err != nil {
+		return nil, err
+	}
 
 	return &TCPPacket{
 		IPPacket: ip,
 		Header:   *TCPHeader,
-	}, err
+	}, nil
 }
 
 func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
@@ -49,7 +52,7 @@ func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
 		return nil, ErrTCPHeaderLenMismatch
 	}
 
-	return &TCPHeader{
+	h := &TCPHeader{
 		SourcePort:      binary.BigEndian.Uint16(raw[0:2]),
 		DestinationPort: binary.BigEndian.Uint16(raw[2:4]),
 		SequenceNumber:  binary.BigEndian.Uint32(raw[4:8]),
@@ -59,8 +62,11 @@ func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
 		WindowSize:      binary.BigEndian.Uint16(raw[14:16]),
 		Checksum:        binary.BigEndian.Uint16(raw[16:18]),
 		UrgentPointer:   binary.BigEndian.Uint16(raw[18:20]),
-		Options:         raw[20:hLen],
-	}, nil
+	}
+	if hLen > 20 {
+		h.Options = raw[20:hLen]
+	}
+	return h, nil
 }
 
 // Info return an human-readable string containing the main TCP packet data

@@ -188,7 +188,7 @@ func ipv4HeaderFromBytes(raw []byte) (*ipv4Header, error) {
 		destinationIP:  net.IP(raw[16:20]),
 	}
 
-	if len(raw) > 20 {
+	if hLen > 20 {
 		h.options = raw[20:hLen]
 	}
 	return h, nil
