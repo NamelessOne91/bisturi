@@ -87,7 +87,7 @@ func (rs *RawSocket) ReadToChan(dataChan chan<- NetworkPacket, errChan chan<- er
 				continue
 			}
 
-			switch ethFrame.EtherType() {
+			switch ethFrame.Type() {
 			case "ARP":
 				// TODO: ARP parsing
 			case "IPv4", "IPv6":

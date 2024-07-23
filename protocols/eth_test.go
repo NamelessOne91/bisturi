@@ -61,14 +61,14 @@ func TestEthFrameFromBytes(t *testing.T) {
 			}
 
 			if tt.expectedErr == nil {
-				if tt.expectedDestMAC != frame.destinationMAC.String() || tt.expectedSourceMAC != frame.sourceMAC.String() {
+				if tt.expectedDestMAC != frame.DestinationMAC.String() || tt.expectedSourceMAC != frame.SourceMAC.String() {
 					t.Errorf(
 						"expected destination and source MAC to be %s and %s - got %s and %s",
-						tt.expectedDestMAC, tt.expectedSourceMAC, frame.destinationMAC.String(), frame.sourceMAC.String(),
+						tt.expectedDestMAC, tt.expectedSourceMAC, frame.DestinationMAC.String(), frame.SourceMAC.String(),
 					)
 				}
-				if tt.expectedEtherType != frame.etherType {
-					t.Errorf("expected ethernet type to be %v - got %v", tt.expectedEtherType, frame.etherType)
+				if tt.expectedEtherType != frame.EtherType {
+					t.Errorf("expected ethernet type to be %v - got %v", tt.expectedEtherType, frame.EtherType)
 				}
 			}
 		})

@@ -8,7 +8,7 @@ import (
 )
 
 // maps the ETH frame values to the corresponding string representation
-var etherTypesValues = map[uint16]string{
+var EtherTypesValues = map[uint16]string{
 	0x0800: "IPv4",
 	0x0806: "ARP",
 	0x0842: "Wake-on-LAN",
@@ -18,10 +18,10 @@ var etherTypesValues = map[uint16]string{
 
 // EthernetFrame contains Layer 2 data
 type EthernetFrame struct {
-	destinationMAC net.HardwareAddr
-	sourceMAC      net.HardwareAddr
-	etherType      uint16
-	payload        []byte
+	DestinationMAC net.HardwareAddr
+	SourceMAC      net.HardwareAddr
+	EtherType      uint16
+	Payload        []byte
 }
 
 var errInvalidETHFrame = errors.New("ethernet frame header must be 14 bytes")
@@ -34,18 +34,18 @@ func EthFrameFromBytes(raw []byte) (*EthernetFrame, error) {
 	}
 
 	return &EthernetFrame{
-		destinationMAC: net.HardwareAddr(raw[0:6]),
-		sourceMAC:      net.HardwareAddr(raw[6:12]),
-		etherType:      binary.BigEndian.Uint16(raw[12:14]),
-		payload:        raw[14:],
+		DestinationMAC: net.HardwareAddr(raw[0:6]),
+		SourceMAC:      net.HardwareAddr(raw[6:12]),
+		EtherType:      binary.BigEndian.Uint16(raw[12:14]),
+		Payload:        raw[14:],
 	}, nil
 }
 
-func (f EthernetFrame) EtherType() string {
-	return etherTypesValues[f.etherType]
+func (f EthernetFrame) Type() string {
+	return EtherTypesValues[f.EtherType]
 }
 
 // Info returns an human-readable string containing all the ETH frame data
 func (f EthernetFrame) Info() string {
-	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", f.EtherType(), f.sourceMAC, f.destinationMAC)
+	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", f.Type(), f.SourceMAC, f.DestinationMAC)
 }
