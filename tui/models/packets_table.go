@@ -61,8 +61,8 @@ func (m packetsTablemodel) Init() tea.Cmd {
 
 func (m packetsTablemodel) Update(msg tea.Msg) (packetsTablemodel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case packetMsg:
-		m.addRow(msg)
+	case readPacketsMsg:
+		m.addRows(msg)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -81,19 +81,21 @@ func (m packetsTablemodel) View() string {
 	return fmt.Sprintf("Displaying up to the last %d rows\n\n%s", m.maxRows, m.table.View())
 }
 
-func (m *packetsTablemodel) addRow(data sockets.NetworkPacket) {
-	if len(m.cachedRows) >= m.maxRows {
-		m.cachedRows = m.cachedRows[1:]
-	}
-	m.counter += 1
+func (m *packetsTablemodel) addRows(packets []sockets.NetworkPacket) {
+	for _, np := range packets {
+		if len(m.cachedRows) >= m.maxRows {
+			m.cachedRows = m.cachedRows[1:]
+		}
+		m.counter += 1
 
-	newRow := table.NewRow(table.RowData{
-		columnKeyID:          m.counter,
-		columnKeyDate:        time.Now().Local().Format(time.Stamp),
-		columnKeySource:      data.Source(),
-		columnKeyDestination: data.Destination(),
-		columnKeyInfo:        data.Info(),
-	})
-	m.cachedRows = append(m.cachedRows, newRow)
+		newRow := table.NewRow(table.RowData{
+			columnKeyID:          m.counter,
+			columnKeyDate:        time.Now().Local().Format(time.Stamp),
+			columnKeySource:      np.Source(),
+			columnKeyDestination: np.Destination(),
+			columnKeyInfo:        np.Info(),
+		})
+		m.cachedRows = append(m.cachedRows, newRow)
+	}
 	m.table = m.table.WithRows(m.cachedRows)
 }

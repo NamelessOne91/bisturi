@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/NamelessOne91/bisturi/sockets"
 	"github.com/NamelessOne91/bisturi/tui/styles"
@@ -26,7 +27,7 @@ const (
 
 type errMsg error
 
-type packetMsg sockets.NetworkPacket
+type readPacketsMsg []sockets.NetworkPacket
 
 type bisturiModel struct {
 	terminalHeight    int
@@ -41,6 +42,7 @@ type bisturiModel struct {
 	selectedEthType   uint16
 	rawSocket         *sockets.RawSocket
 	packetsChan       chan sockets.NetworkPacket
+	msgChan           chan tea.Msg
 	errChan           chan error
 	err               error
 }
@@ -60,8 +62,11 @@ func NewBisturiModel() *bisturiModel {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc99"))
 
 	return &bisturiModel{
-		step:    retrieveIfaces,
-		spinner: s,
+		step:        retrieveIfaces,
+		spinner:     s,
+		packetsChan: make(chan sockets.NetworkPacket),
+		msgChan:     make(chan tea.Msg),
+		errChan:     make(chan error),
 	}
 }
 
@@ -213,16 +218,12 @@ func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			maxRows, err := strconv.Atoi(m.rowsInput.Value())
 			if err == nil && maxRows > 0 {
 				m.packetsTable = newPacketsTable(maxRows, m.terminalWidth)
-
-				m.packetsChan = make(chan sockets.NetworkPacket)
-				m.errChan = make(chan error)
-
 				m.step = receivePackets
 
-				return m, tea.Batch(func() tea.Msg {
-					go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
-					return nil
-				}, m.waitForPacket)
+				go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
+				go m.readPackets()
+
+				return m, m.pollPacketsMessages()
 			}
 		}
 	}
@@ -242,18 +243,34 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.packetsTable.resizeTable(m.terminalWidth)
 
 		return m, nil
-
-	case sockets.NetworkPacket:
-		return m, m.waitForPacket
+	case readPacketsMsg:
+		return m, m.pollPacketsMessages()
 	}
 	return m, cmd
 }
 
-func (m bisturiModel) waitForPacket() tea.Msg {
-	select {
-	case packet := <-m.packetsChan:
-		return packetMsg(packet)
-	case err := <-m.errChan:
-		return errMsg(err)
+func (m bisturiModel) readPackets() {
+	readPackets := []sockets.NetworkPacket{}
+	timer := time.NewTicker(3 * time.Second)
+	defer timer.Stop()
+
+	for {
+		select {
+		case packet := <-m.packetsChan:
+			readPackets = append(readPackets, packet)
+		case <-timer.C:
+			if len(readPackets) > 0 {
+				m.msgChan <- readPacketsMsg(readPackets)
+				readPackets = []sockets.NetworkPacket{}
+			}
+		case err := <-m.errChan:
+			m.msgChan <- errMsg(err)
+		}
+	}
+}
+
+func (m bisturiModel) pollPacketsMessages() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.msgChan
 	}
 }
