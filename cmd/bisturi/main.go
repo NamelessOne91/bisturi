@@ -10,7 +10,7 @@ import (
 )
 
 func clearScreen() error {
-	cmd := exec.Command("clear") // On Windows use exec.Command("cmd", "/c", "cls")
+	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
 }

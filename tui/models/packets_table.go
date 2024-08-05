@@ -27,7 +27,7 @@ type packetsTablemodel struct {
 
 func buildTable(rows []table.Row, terminalWidth int) table.Model {
 	return table.New([]table.Column{
-		table.NewColumn(columnKeyID, "#", (2*terminalWidth)/100),
+		table.NewColumn(columnKeyID, "#", (3*terminalWidth)/100),
 		table.NewColumn(columnKeyDate, "Date", (8*terminalWidth)/100),
 		table.NewColumn(columnKeySource, "Source", (20*terminalWidth)/100),
 		table.NewColumn(columnKeyDestination, "Destination", (20*terminalWidth)/100),
@@ -42,7 +42,7 @@ func buildTable(rows []table.Row, terminalWidth int) table.Model {
 }
 
 func newPacketsTable(max int, terminalWidth int) packetsTablemodel {
-	rows := make([]table.Row, 0, max)
+	rows := make([]table.Row, max)
 
 	return packetsTablemodel{
 		maxRows:    max,
@@ -82,15 +82,26 @@ func (m packetsTablemodel) View() string {
 }
 
 func (m *packetsTablemodel) addRows(packets []sockets.NetworkPacket) {
-	for _, np := range packets {
-		if len(m.cachedRows) >= m.maxRows {
-			m.cachedRows = m.cachedRows[1:]
+	lp := len(packets)
+	lc := len(m.cachedRows)
+
+	if (lp + lc) > m.maxRows {
+		newCache := make([]table.Row, 0, m.maxRows)
+		if lp > m.maxRows {
+			packets = packets[lp-m.maxRows:]
+		} else {
+			oldToKeep := m.maxRows - lp
+			newCache = append(newCache, m.cachedRows[lc-oldToKeep:]...)
 		}
+		m.cachedRows = newCache
+	}
+
+	for _, np := range packets {
 		m.counter += 1
 
 		newRow := table.NewRow(table.RowData{
 			columnKeyID:          m.counter,
-			columnKeyDate:        time.Now().Local().Format(time.Stamp),
+			columnKeyDate:        time.Now().Local().Format(time.TimeOnly),
 			columnKeySource:      np.Source(),
 			columnKeyDestination: np.Destination(),
 			columnKeyInfo:        np.Info(),
