@@ -36,7 +36,7 @@ type bisturiModel struct {
 	spinner           spinner.Model
 	startMenu         startMenuModel
 	rowsInput         textinput.Model
-	packetsTable      packetsTablemodel
+	packetsTable      packetsTableModel
 	selectedInterface net.Interface
 	selectedProtocol  string
 	selectedEthType   uint16
@@ -217,7 +217,7 @@ func (m *bisturiModel) updateRowsInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			maxRows, err := strconv.Atoi(m.rowsInput.Value())
 			if err == nil && maxRows > 0 {
-				m.packetsTable = newPacketsTable(maxRows, m.terminalWidth)
+				m.packetsTable = newPacketsTable(maxRows, m.terminalHeight, m.terminalWidth)
 				m.step = receivePackets
 
 				go m.rawSocket.ReadToChan(m.packetsChan, m.errChan)
@@ -240,7 +240,7 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.terminalHeight = msg.Height
 		m.terminalWidth = msg.Width
-		m.packetsTable.resizeTable(m.terminalWidth)
+		m.packetsTable.resize(m.terminalHeight, m.terminalWidth)
 
 		return m, nil
 	case readPacketsMsg:
@@ -251,7 +251,7 @@ func (m *bisturiModel) updateReceivingPacket(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m bisturiModel) readPackets() {
 	readPackets := []sockets.NetworkPacket{}
-	timer := time.NewTicker(3 * time.Second)
+	timer := time.NewTicker(5 * time.Second)
 	defer timer.Stop()
 
 	for {

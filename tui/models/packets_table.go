@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/NamelessOne91/bisturi/sockets"
+	"github.com/NamelessOne91/bisturi/tui/styles"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -18,22 +19,24 @@ const (
 	columnKeyInfo        = "info"
 )
 
-type packetsTablemodel struct {
+type packetsTableModel struct {
 	table      table.Model
+	height     int
+	width      int
 	maxRows    int
 	cachedRows []table.Row
 	counter    uint64
 }
 
-func buildTable(rows []table.Row, terminalWidth int) table.Model {
-	return table.New([]table.Column{
-		table.NewColumn(columnKeyID, "#", (3*terminalWidth)/100),
-		table.NewColumn(columnKeyDate, "Date", (8*terminalWidth)/100),
-		table.NewColumn(columnKeySource, "Source", (20*terminalWidth)/100),
-		table.NewColumn(columnKeyDestination, "Destination", (20*terminalWidth)/100),
-		table.NewColumn(columnKeyInfo, "Info", (46*terminalWidth)/100),
+func (m *packetsTableModel) buildTable() {
+	m.table = table.New([]table.Column{
+		table.NewColumn(columnKeyID, "#", (3*m.width)/100),
+		table.NewColumn(columnKeyDate, "Date", (7*m.width)/100),
+		table.NewColumn(columnKeySource, "Source", (20*m.width)/100),
+		table.NewColumn(columnKeyDestination, "Destination", (20*m.width)/100),
 	}).
-		WithRows(rows).
+		WithRows(m.cachedRows).
+		Focused(true).
 		WithBaseStyle(lipgloss.NewStyle().
 			BorderForeground(lipgloss.Color("#00cc99")).
 			Foreground(lipgloss.Color("#00cc99")).
@@ -41,25 +44,31 @@ func buildTable(rows []table.Row, terminalWidth int) table.Model {
 		)
 }
 
-func newPacketsTable(max int, terminalWidth int) packetsTablemodel {
+func newPacketsTable(max int, height, width int) packetsTableModel {
 	rows := make([]table.Row, 0, max)
 
-	return packetsTablemodel{
+	ptm := packetsTableModel{
+		height:     height,
+		width:      width,
 		maxRows:    max,
 		cachedRows: rows,
-		table:      buildTable(rows, terminalWidth),
 	}
+	ptm.buildTable()
+
+	return ptm
 }
 
-func (m *packetsTablemodel) resizeTable(terminalWidth int) {
-	m.table = buildTable(m.cachedRows, terminalWidth)
+func (m *packetsTableModel) resize(height, width int) {
+	m.height = height
+	m.width = width
+	m.buildTable()
 }
 
-func (m packetsTablemodel) Init() tea.Cmd {
+func (m packetsTableModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m packetsTablemodel) Update(msg tea.Msg) (packetsTablemodel, tea.Cmd) {
+func (m packetsTableModel) Update(msg tea.Msg) (packetsTableModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case readPacketsMsg:
 		m.addRows(msg)
@@ -77,11 +86,36 @@ func (m packetsTablemodel) Update(msg tea.Msg) (packetsTablemodel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m packetsTablemodel) View() string {
-	return fmt.Sprintf("Displaying up to the last %d rows\n\n%s", m.maxRows, m.table.View())
+func (m packetsTableModel) View() string {
+	var detailTxt string
+	if len(m.table.GetVisibleRows()) > 0 {
+		detailTxt = m.table.HighlightedRow().Data[columnKeyInfo].(string)
+	}
+
+	detailsBox := lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#00cc99")).
+		Padding(1, 2).
+		Width((40 * m.width) / 100).
+		Height((80 * m.height) / 100).
+		Render(detailTxt)
+
+	mainView := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		m.table.View(),
+		detailsBox,
+	)
+
+	view := lipgloss.JoinVertical(
+		lipgloss.Left,
+		styles.Subtle.Render(fmt.Sprintf("Displaying up to the last %d rows", m.maxRows)),
+		mainView,
+	) + "\n"
+
+	return view
 }
 
-func (m *packetsTablemodel) addRows(packets []sockets.NetworkPacket) {
+func (m *packetsTableModel) addRows(packets []sockets.NetworkPacket) {
 	lp := len(packets)
 	lc := len(m.cachedRows)
 
