@@ -10,6 +10,7 @@ import (
 // maps the IP header values to the corresponding transport layer protocol
 var protocolValues = map[uint8]string{
 	1:  "icmp",
+	2:  "igmp",
 	6:  "tcp",
 	17: "udp",
 	41: "ipv6",
