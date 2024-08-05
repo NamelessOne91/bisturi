@@ -42,7 +42,7 @@ func buildTable(rows []table.Row, terminalWidth int) table.Model {
 }
 
 func newPacketsTable(max int, terminalWidth int) packetsTablemodel {
-	rows := make([]table.Row, max)
+	rows := make([]table.Row, 0, max)
 
 	return packetsTablemodel{
 		maxRows:    max,
