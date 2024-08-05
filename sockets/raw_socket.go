@@ -143,6 +143,9 @@ func handleLayer4Protocol(protocol string, packet protocols.IPPacket, dataChan c
 		np, err = protocols.UDPPacketFromIPPacket(packet)
 	case "tcp":
 		np, err = protocols.TCPPacketFromIPPacket(packet)
+	default:
+		// TODO: maybe support more protocols
+		return
 	}
 
 	if err != nil {
