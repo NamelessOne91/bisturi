@@ -1,11 +1,9 @@
 package tui
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/NamelessOne91/bisturi/sockets"
-	"github.com/NamelessOne91/bisturi/tui/styles"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -13,7 +11,7 @@ import (
 
 const (
 	columnKeyID          = "id"
-	columnKeyDate        = "date"
+	columnKeyTime        = "time"
 	columnKeySource      = "source"
 	columnKeyDestination = "destination"
 	columnKeyInfo        = "info"
@@ -31,7 +29,7 @@ type packetsTableModel struct {
 func (m *packetsTableModel) buildTable() {
 	m.table = table.New([]table.Column{
 		table.NewColumn(columnKeyID, "#", (3*m.width)/100),
-		table.NewColumn(columnKeyDate, "Date", (7*m.width)/100),
+		table.NewColumn(columnKeyTime, "Time", (7*m.width)/100),
 		table.NewColumn(columnKeySource, "Source", (20*m.width)/100),
 		table.NewColumn(columnKeyDestination, "Destination", (20*m.width)/100),
 	}).
@@ -95,9 +93,10 @@ func (m packetsTableModel) View() string {
 	detailsBox := lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("#00cc99")).
+		Foreground(lipgloss.Color("#00cc99")).
 		Padding(1, 2).
 		Width((40 * m.width) / 100).
-		Height((80 * m.height) / 100).
+		Height((90 * m.height) / 100).
 		Render(detailTxt)
 
 	mainView := lipgloss.JoinHorizontal(
@@ -108,7 +107,6 @@ func (m packetsTableModel) View() string {
 
 	view := lipgloss.JoinVertical(
 		lipgloss.Left,
-		styles.Subtle.Render(fmt.Sprintf("Displaying up to the last %d rows", m.maxRows)),
 		mainView,
 	) + "\n"
 
@@ -135,7 +133,7 @@ func (m *packetsTableModel) addRows(packets []sockets.NetworkPacket) {
 
 		newRow := table.NewRow(table.RowData{
 			columnKeyID:          m.counter,
-			columnKeyDate:        time.Now().Local().Format(time.TimeOnly),
+			columnKeyTime:        time.Now().Local().Format(time.TimeOnly),
 			columnKeySource:      np.Source(),
 			columnKeyDestination: np.Destination(),
 			columnKeyInfo:        np.Info(),

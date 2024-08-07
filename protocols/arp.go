@@ -65,5 +65,19 @@ func (p ARPPacket) Source() string {
 }
 
 func (p ARPPacket) Info() string {
-	return fmt.Sprintf("%s ARP packet from %s to %s", HardwareTypeValues[p.HardwareType], p.Source(), p.Destination())
+	hwType := HardwareTypeValues[p.HardwareType]
+
+	return fmt.Sprintf(`
+ARP Packet
+
+Hardware Type: %s
+Protocol Type: %d
+Sender HW Address: %s
+Target HW Address: %s
+
+===============================
+%s`,
+		hwType, p.ProtocolType, p.SenderHWAddr.String(), p.TargetHWAddr.String(), p.EthFrame.Info(),
+	)
+
 }

@@ -103,13 +103,12 @@ func (m bisturiModel) View() string {
 
 	switch m.step {
 	case retrieveIfaces:
-		sb.WriteString(fmt.Sprintf("\n\nWelcome!\n\nRetrieving network interfaces \n\n%s", m.spinner.View()))
+		sb.WriteString(fmt.Sprintf("\nWelcome!\nRetrieving network interfaces \n\n%s", m.spinner.View()))
 	case selectIface, selectProtocol:
 		sb.WriteString(m.startMenu.View())
 	case selectRows:
 		sb.WriteString(m.rowsInput.View())
 	case receivePackets:
-		sb.WriteString(fmt.Sprintf("\n\nReceiving %s packets on %s ...\n\n", m.selectedProtocol, m.selectedInterface.Name))
 		sb.WriteString(m.packetsTable.View())
 	default:
 		sb.WriteString("The program is in an unknown state\nQuit with 'q'")

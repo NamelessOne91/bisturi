@@ -155,8 +155,30 @@ func (p ipv4Packet) Payload() []byte {
 
 // Info returns an human-readable string containing the main IPv4 packet data
 func (p ipv4Packet) Info() string {
-	return fmt.Sprintf("%s IPv4 packet from IP %s to IP %s",
-		p.header.TransportLayerProtocol(), p.header.sourceIP, p.header.destinationIP,
+	return fmt.Sprintf(`
+IPv4 packet
+
+Version: %d
+Header Length: %d bytes
+DSCP: %d
+ECN: %d
+Total Length: %d
+Identification: %d
+Flags: %d
+Fragment Offset: %d
+TTL: %d
+Transport Layer Protocol: %d (%s)
+Header Checksum: %d
+Source IP: %s
+Destination IP: %s
+Options: %v
+
+===============================
+%s`,
+		p.header.version, p.header.ihl*4, p.header.dscp, p.header.ecn, p.header.totalLength, p.header.identification,
+		p.header.flags, p.header.fragmentOffset, p.header.ttl, p.header.protocol, p.header.TransportLayerProtocol(), p.header.headerChecksum,
+		p.header.sourceIP, p.header.destinationIP, p.header.options,
+		p.ethFrame.Info(),
 	)
 }
 
@@ -247,8 +269,24 @@ func (p ipv6Packet) Payload() []byte {
 
 // Info returns an human-readable string containing the main IPv6 packet data
 func (p ipv6Packet) Info() string {
-	return fmt.Sprintf("%s IPv6 packet from IP %s to IP %s",
-		p.header.TransportLayerProtocol(), p.header.sourceIP, p.header.destinationIP,
+	return fmt.Sprintf(`
+IPv6 packet
+
+Version: %d
+Traffic Class: %d
+Flow Label: %d
+Payload Length: %d
+Transport Layer Protocol: %d (%s)
+Hop Limit: %d
+Source IP: %s
+Destination IP: %s
+===============================
+%s
+===============================
+`,
+		p.header.version, p.header.trafficClass, p.header.flowLabel, p.header.payloadLength,
+		p.header.nextHeader, p.header.TransportLayerProtocol(), p.header.hopLimit, p.header.sourceIP, p.header.destinationIP,
+		p.ethFrame.Info(),
 	)
 }
 

@@ -48,5 +48,14 @@ func (f EthernetFrame) Type() string {
 
 // Info returns an human-readable string containing all the ETH frame data
 func (f EthernetFrame) Info() string {
-	return fmt.Sprintf("%s Ethernet Frame from MAC %s to MAC %s", f.Type(), f.SourceMAC, f.DestinationMAC)
+	etv := EtherTypesValues[f.EtherType]
+
+	return fmt.Sprintf(`
+Ethernet Frame
+
+Destination MAC: %s
+Source MAC: %s
+EtherType: 0x%X (%s)`,
+		f.DestinationMAC, f.SourceMAC, f.EtherType, etv,
+	)
 }

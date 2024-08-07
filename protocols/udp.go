@@ -36,8 +36,17 @@ func UDPPacketFromIPPacket(ip IPPacket) (*UDPPacket, error) {
 
 // Info return an human-readable string containing the main UDP packet data
 func (p UDPPacket) Info() string {
-	return fmt.Sprintf("%s - port %d to port %d",
-		p.IPPacket.Info(), p.Header.SourcePort, p.Header.DestinationPort,
+	return fmt.Sprintf(`
+UDP packet
+
+Source Port: %d
+Destination Port: %d
+Length: %d
+Checksum: %d
+
+===============================
+%s`,
+		p.Header.SourcePort, p.Header.SourcePort, p.Header.Length, p.Header.Checksum, p.IPPacket.Info(),
 	)
 }
 

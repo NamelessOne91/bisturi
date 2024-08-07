@@ -71,8 +71,16 @@ func TCPHeaderFromBytes(raw []byte) (*TCPHeader, error) {
 
 // Info return an human-readable string containing the main TCP packet data
 func (p TCPPacket) Info() string {
-	return fmt.Sprintf("%s - port %d to port %d",
-		p.IPPacket.Info(), p.Header.SourcePort, p.Header.DestinationPort,
+	return fmt.Sprintf(`
+TCP packet
+
+Source Port: %d
+Destination Port: %d
+Checksum: %d
+
+===============================
+%s`,
+		p.Header.SourcePort, p.Header.SourcePort, p.Header.Checksum, p.IPPacket.Info(),
 	)
 }
 
