@@ -121,6 +121,7 @@ func (m *packetsTableModel) addRows(packets []sockets.NetworkPacket) {
 		newCache := make([]table.Row, 0, m.maxRows)
 		if lp > m.maxRows {
 			packets = packets[lp-m.maxRows:]
+			m.counter += uint64(lp - m.maxRows)
 		} else {
 			oldToKeep := m.maxRows - lp
 			newCache = append(newCache, m.cachedRows[lc-oldToKeep:]...)
